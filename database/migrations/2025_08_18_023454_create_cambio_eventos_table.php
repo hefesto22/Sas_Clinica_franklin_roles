@@ -26,6 +26,7 @@ return new class extends Migration
 
             // Estado del proceso
             $table->enum('estado', ['pendiente', 'aceptado', 'rechazado', 'cancelado'])->default('pendiente');
+            
 
             // Campos auxiliares
             $table->text('motivo_cancelacion')->nullable();

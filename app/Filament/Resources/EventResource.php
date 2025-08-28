@@ -14,7 +14,9 @@ use App\Helpers\HorarioHelper;
 use Illuminate\Support\Carbon;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use App\Models\User;
 use App\Models\ServicioEspecialidad;
+
 
 class EventResource extends \Filament\Resources\Resource
 {
@@ -80,6 +82,25 @@ class EventResource extends \Filament\Resources\Resource
                     $set('start_at',   null);
                     $set('end_at',     null);
                 }),
+
+
+
+            Forms\Components\Select::make('doctor_id')
+                ->label('Doctor')
+                ->relationship(
+                    name: 'doctor',                      // relación en Event: doctor()
+                    titleAttribute: 'name',
+                    modifyQueryUsing: fn($query) => $query->role('doctor') // solo usuarios con rol doctor
+                )
+                ->searchable()
+                ->preload()
+                ->default(function () {
+                    $u = Auth::user();
+                    return ($u instanceof User && $u->hasRole('doctor'))
+                        ? $u->id
+                        : null;
+                })
+                ->nullable(), // 👈 ahora el campo puede quedar vacío
 
             // FECHA
             Forms\Components\DatePicker::make('start_date')

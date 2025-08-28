@@ -12,6 +12,7 @@ class Event extends Model
     protected $fillable = [
         'cliente_id',
         'consultorio_id',
+        'doctor_id',
         'telefono',
         'estado',
         'start_at',
@@ -26,6 +27,11 @@ class Event extends Model
         return $this->belongsTo(Cliente::class);
     }
 
+    public function doctor()
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
+    }
+    
     public function consultorio()
     {
         return $this->belongsTo(Consultorio::class);

@@ -19,9 +19,22 @@ return new class extends Migration
             $table->foreignId('cliente_id')->constrained('clientes')->onDelete('cascade');
             $table->foreignId('consultorio_id')->constrained('consultorios')->onDelete('cascade');
 
+            // Doctor (usuario con rol doctor)
+            $table->foreignId('doctor_id')
+                ->nullable()                // ✅ permite NULL
+                ->constrained('users')
+                ->nullOnDelete();
+
             // Teléfono y estado
             $table->string('telefono')->nullable();
-            $table->enum('estado', ['Pendiente', 'Reagendando', 'Reagendado', 'Confirmado', 'Se Presentó'])->default('Pendiente');
+            $table->enum('estado', [
+                'Pendiente',
+                'Reagendando',
+                'Reagendado',
+                'Confirmado',
+                'Se Presentó',
+                'Cancelado'
+            ])->default('Pendiente');
 
             // Fechas de la cita
             $table->dateTime('start_at');
@@ -33,6 +46,7 @@ return new class extends Migration
 
             $table->timestamps();
         });
+
 
         // Tabla pivote event_especialidad
         Schema::create('event_especialidad', function (Blueprint $table) {

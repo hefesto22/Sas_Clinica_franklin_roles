@@ -18,39 +18,50 @@ use Saade\FilamentFullCalendar\Actions\CreateAction;
 
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-
-
+use Livewire\Attributes\Url;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use App\Models\ClienteNota;
+use App\Models\ClienteActividad;
+//aca ya sirve refrescando manua 
 class CalendarWidget extends FullCalendarWidget
 {
     public Model | string | null $model = Event::class;
 
+
+    #[Url(as: 'consultorio')]     // se refleja como ?consultorio=ID en la URL
+    public ?int $consultorioFilter = 1;
+
+    protected $casts = [
+        'consultorioFilter' => 'integer',
+    ];
+
     protected function headerActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            // Crear evento
+            \Saade\FilamentFullCalendar\Actions\CreateAction::make()
                 ->label('Crear evento')
                 ->icon('heroicon-o-plus')
-
-                // 👉 Usa el schema COMPLETO para crear (con Teléfono, Fecha, Hora, etc.)
                 ->form(fn() => $this->getCreateFormSchema())
-
                 ->mountUsing(function (Forms\Form $form, array $arguments) {
                     $form->fill([
                         'start_date' => isset($arguments['start'])
-                            ? \Illuminate\Support\Carbon::parse($arguments['start'])->format('Y-m-d')
+                            ? Carbon::parse($arguments['start'])->format('Y-m-d')
                             : now()->format('Y-m-d'),
                         'start_time' => isset($arguments['start'])
-                            ? \Illuminate\Support\Carbon::parse($arguments['start'])->format('H:i')
+                            ? Carbon::parse($arguments['start'])->format('H:i')
                             : null,
                         'end_time'   => isset($arguments['end'])
-                            ? \Illuminate\Support\Carbon::parse($arguments['end'])->format('H:i')
+                            ? Carbon::parse($arguments['end'])->format('H:i')
                             : null,
                     ]);
                 })
                 ->mutateFormDataUsing(function (array $data): array {
-                    $start = \Illuminate\Support\Carbon::parse("{$data['start_date']} {$data['start_time']}:00");
+                    $start = Carbon::parse("{$data['start_date']} {$data['start_time']}:00");
                     $end   = isset($data['end_time'])
-                        ? \Illuminate\Support\Carbon::parse("{$data['start_date']} {$data['end_time']}:00")
+                        ? Carbon::parse("{$data['start_date']} {$data['end_time']}:00")
                         : (clone $start)->addMinutes(30);
 
                     $data['start_at'] = $start;
@@ -59,53 +70,92 @@ class CalendarWidget extends FullCalendarWidget
                     unset($data['start_date'], $data['start_time'], $data['end_time']);
 
                     $data['estado']     = $data['estado'] ?? 'Pendiente';
-                    $data['created_by'] = \Illuminate\Support\Facades\Auth::id(); // 👈 AQUI
-
-                    // (si tu tabla también requiere usuario_id)
-                    // $data['usuario_id'] = $data['usuario_id'] ?? \Illuminate\Support\Facades\Auth::id();
+                    $data['created_by'] = Auth::id();
 
                     return $data;
                 })
-
                 ->using(function (array $data) {
                     $especialidades = $data['especialidades'] ?? [];
                     $servicios      = $data['servicios'] ?? [];
                     unset($data['especialidades'], $data['servicios']);
 
-                    $event = \App\Models\Event::create($data);
+                    $event = Event::create($data);
                     if ($especialidades) $event->especialidades()->sync($especialidades);
                     if ($servicios)      $event->servicios()->sync($servicios);
 
                     return $event;
                 }),
+
+            // Filtro por consultorio
+            Action::make('filtrarConsultorio')
+                ->label('Filtrar por consultorio')
+                ->icon('heroicon-o-funnel')
+                ->color('gray')
+                ->form([
+                    Forms\Components\Select::make('consultorio_id')
+                        ->label('Consultorio')
+                        ->searchable()
+                        ->preload()
+                        ->options(\App\Models\Consultorio::pluck('nombre', 'id'))
+                        ->native(false)
+                        ->placeholder('Todos'),
+                ])
+                ->modalHeading('Filtrar por consultorio')
+                ->modalSubmitActionLabel('Aplicar')
+                ->action(function (array $data): void {
+                    $this->consultorioFilter = isset($data['consultorio_id'])
+                        ? (int) $data['consultorio_id']
+                        : null;
+                }),
+
+            // Quitar filtro
+            Action::make('limpiarFiltroConsultorio')
+                ->label('Quitar filtro')
+                ->icon('heroicon-o-x-mark')
+                ->color('secondary')
+                ->visible(fn() => filled($this->consultorioFilter))
+                ->action(function (): void {
+                    $this->consultorioFilter = null;
+                }),
         ];
     }
 
-
-
     public function fetchEvents(array $fetchInfo): array
     {
-        return Event::with(['cliente', 'consultorio']) // eager load relaciones
-            ->where('start_at', '>=', $fetchInfo['start'])
-            ->where('end_at', '<=', $fetchInfo['end'])
+        return Event::with(['cliente:id,nombre', 'consultorio:id,nombre'])
+            ->whereBetween('start_at', [$fetchInfo['start'], $fetchInfo['end']])
+            ->where('estado', '!=', 'Cancelado')   // ⬅️ excluye canceladas
+            ->when(!is_null($this->consultorioFilter), function ($q) {
+                $q->where('consultorio_id', (int) $this->consultorioFilter);
+            })
             ->get()
-            ->map(
-                fn(Event $event) => [
-                    'id'    => $event->id,
-                    'title' => $event->cliente->nombre . ' - ' . $event->consultorio->nombre,
-                    'start' => $event->start_at,
-                    'end'   => $event->end_at,
-                    'color' => match ($event->estado) {
-                        'Confirmado' => 'green',
-                        'Reagendado' => 'blue',
-                        'Reagendando' => 'orange',
-                        'Se Presentó' => 'teal',
-                        default => 'gray',
-                    },
-                ]
-            )
+            ->map(fn(Event $event) => [
+                'id'    => $event->id,
+                'title' => ($event->cliente->nombre ?? 'Sin nombre') . ' - ' . ($event->consultorio->nombre ?? 'Sin consultorio'),
+                'start' => $event->start_at instanceof \Carbon\Carbon ? $event->start_at->toIso8601String() : $event->start_at,
+                'end'   => $event->end_at   instanceof \Carbon\Carbon ? $event->end_at->toIso8601String()   : $event->end_at,
+                'color' => match ($event->estado) {
+                    'Confirmado'  => 'green',
+                    'Reagendado'  => 'blue',
+                    'Reagendando' => 'orange',
+                    'Se Presentó' => 'teal',
+                    default       => 'gray',
+                },
+            ])
             ->all();
     }
+
+
+    protected function getHeading(): string
+    {
+        if ($this->consultorioFilter) {
+            $nombre = \App\Models\Consultorio::find($this->consultorioFilter)?->nombre ?? 'Consultorio';
+            return "Agenda — {$nombre}";
+        }
+
+        return 'Agenda';
+    }
+
 
 
     public function getFormSchema(): array
@@ -198,33 +248,96 @@ class CalendarWidget extends FullCalendarWidget
                     ->color('primary')
                     ->icon('heroicon-o-user')
                     ->visible(fn($record) => $record && $record->estado === 'Confirmado')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        $servicio = $record->servicios->first(); // Solo tomamos el primer servicio por simplicidad
-                        $nombreServicio = $servicio?->nombre ?? 'Servicio no especificado';
-                        $precioServicio = $servicio?->precio ?? 0;
+                    ->modalHeading('Registrar asistencia')
+                    ->modalSubmitActionLabel('Guardar y cerrar')
+                    ->form(function ($record) {
+                        $servicio = $record->servicios->first();
 
-                        // Registrar en cliente_actividades
-                        \App\Models\ClienteActividad::create([
-                            'cliente_id' => $record->cliente_id,
-                            'fecha' => now(),
-                            'actividad' => $nombreServicio,
-                            'pago' => $precioServicio,
-                        ]);
+                        // Opciones para checkboxes: id => "fecha — contenido..."
+                        $opcionesNotas = ClienteNota::query()
+                            ->where('cliente_id', $record->cliente_id)
+                            ->where('leida', 0)
+                            ->orderByDesc('created_at')
+                            ->get(['id', 'contenido', 'created_at'])
+                            ->mapWithKeys(function ($n) {
+                                $label = $n->created_at->format('d/m/Y H:i') . ' — ' . Str::limit($n->contenido, 80);
+                                return [$n->id => $label];
+                            })
+                            ->toArray();
 
-                        // Eliminar evento
-                        $record->delete();
+                        return [
+                            // 🔸 Selección manual de notas no leídas
+                            Forms\Components\Section::make('Notas no leídas')
+                                ->description('Selecciona las notas que quieres marcar como leídas')
+                                ->schema([
+                                    Forms\Components\CheckboxList::make('nota_ids_a_marcar')
+                                        ->options($opcionesNotas)
+                                        ->columns(1)
+                                        ->bulkToggleable(), // permite seleccionar/deseleccionar todas
+                                ])
+                                ->visible(fn() => ! empty($opcionesNotas))
+                                ->collapsed(false)
+                                ->columnSpanFull(),
 
-                        // Notificación
-                        \Filament\Notifications\Notification::make()
+                            // Datos de la atención (editables)
+                            Forms\Components\TextInput::make('actividad')
+                                ->label('Servicio / Actividad')
+                                ->default($servicio?->nombre ?? 'Servicio no especificado')
+                                ->required(),
+
+                            Forms\Components\TextInput::make('pago')
+                                ->label('Pago')
+                                ->numeric()
+                                ->prefix('L')
+                                ->default($servicio?->precio ?? 0)
+                                ->rule('numeric')
+                                ->rule('min:0'),
+
+                            Forms\Components\Textarea::make('nota')
+                                ->label('Nueva nota (opcional)')
+                                ->rows(3)
+                                ->maxLength(500),
+                        ];
+                    })
+                    ->action(function ($record, array $data) {
+                        DB::transaction(function () use ($record, $data) {
+                            // 1) Registrar actividad
+                            ClienteActividad::create([
+                                'cliente_id' => $record->cliente_id,
+                                'fecha'      => now(),
+                                'actividad'  => $data['actividad'],
+                                'pago'       => $data['pago'] ?? 0,
+                            ]);
+
+                            // 2) Guardar nueva nota (opcional)
+                            if (!empty($data['nota'])) {
+                                ClienteNota::create([
+                                    'cliente_id' => $record->cliente_id,
+                                    'contenido'  => $data['nota'],
+                                    'leida'      => 0,
+                                    'created_by' => Auth::id(),
+                                ]);
+                            }
+
+                            // 3) Marcar como leídas SOLO las seleccionadas
+                            if (!empty($data['nota_ids_a_marcar'])) {
+                                ClienteNota::whereIn('id', $data['nota_ids_a_marcar'])
+                                    ->update(['leida' => 1, 'updated_at' => now()]);
+                            }
+
+                            // 4) Eliminar la cita (ya atendida)
+                            $record->delete();
+                        });
+
+                        Notification::make()
                             ->title('Asistencia registrada')
-                            ->body("El paciente fue marcado como presente. Se registró el servicio y se eliminó la cita.")
+                            ->body('Se registró la actividad, se procesaron las notas seleccionadas y se eliminó la cita.')
                             ->success()
                             ->send();
 
-                        // Actualizar calendario
                         $this->dispatch('refreshCalendar');
                     }),
+
 
 
                 //aca iniciamos no se presento
@@ -415,11 +528,132 @@ class CalendarWidget extends FullCalendarWidget
                             ->success()
                             ->send();
                     })
-                    ->visible(fn($record) => $record?->estado === 'Pendiente')
+                    ->visible(fn($record) => $record?->estado === 'Pendiente'),
 
+                    
+                \Filament\Forms\Components\Actions\Action::make('asignar_cancelado_a_este_horario')
+                    ->label('Asignar cancelado a este horario')
+                    ->color('secondary')
+                    ->icon('heroicon-o-arrow-path')
+                    ->visible(fn($record) => $record && in_array($record->estado, ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando']))
+                    ->form([
+                        Forms\Components\Select::make('cancelado_id')
+                            ->label('Selecciona una cita cancelada')
+                            ->searchable()
+                            ->required()
+                            ->options(function ($record) {
+                                return Event::with('cliente:id,nombre')
+                                    ->where('estado', 'Cancelado')
+                                    ->orderBy('start_at', 'asc') // de más antigua a más reciente
+                                    ->limit(200)
+                                    ->get()
+                                    ->mapWithKeys(fn($e) => [
+                                        $e->id => ($e->cliente->nombre ?? 'Sin nombre') . ' — ' .
+                                            Carbon::parse($e->start_at)->locale('es')->translatedFormat('ddd D/M h:mm A'),
+                                    ])
+                                    ->toArray();
+                            }),
+                    ])
+                    ->action(function (array $data, $record) {
+                        DB::transaction(function () use ($data, $record) {
+                            /** @var Event $eventoActual */
+                            $eventoActual = $record;
 
+                            /** @var Event|null $eventoCancelado */
+                            $eventoCancelado = Event::with('cliente')->find($data['cancelado_id']);
+                            if (! $eventoCancelado || $eventoCancelado->estado !== 'Cancelado') {
+                                Notification::make()
+                                    ->title('No disponible')
+                                    ->body('La cita seleccionada ya no está en estado Cancelado.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
+                            // Guardar slot original del evento actual
+                            $slotStart        = Carbon::parse($eventoActual->start_at);
+                            $slotEnd          = Carbon::parse($eventoActual->end_at);
+                            $duracionMin      = $slotEnd->diffInMinutes($slotStart);
+                            $consultorioId    = $eventoActual->consultorio_id;
+
+                            // 1) Buscar próxima fecha disponible para el evento actual (misma hora, sin domingos)
+                            $horaDeseada  = $slotStart->format('H:i:s');
+                            $proximaFecha = $slotStart->copy()->addDay();
+                            if ($proximaFecha->isSunday()) {
+                                $proximaFecha->addDay();
+                            }
+
+                            $estadosOcupados = ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando']; // Cancelado no bloquea
+
+                            $fechaDisponible = null;
+                            while (! $fechaDisponible) {
+                                if ($proximaFecha->isSunday()) { // evitar domingos
+                                    $proximaFecha->addDay();
+                                    continue;
+                                }
+
+                                $fechaHora = $proximaFecha->copy()->setTimeFromTimeString($horaDeseada);
+
+                                $yaOcupado = Event::where('consultorio_id', $consultorioId)
+                                    ->whereIn('estado', $estadosOcupados)
+                                    ->where('start_at', $fechaHora)
+                                    ->where('id', '!=', $eventoActual->id)
+                                    ->exists();
+
+                                if (! $yaOcupado) {
+                                    $fechaDisponible = $fechaHora;
+                                    break;
+                                }
+
+                                $proximaFecha->addDay();
+                            }
+
+                            // 2) Mover el evento actual a la próxima fecha disponible
+                            $eventoActual->start_at = $fechaDisponible;
+                            $eventoActual->end_at   = $fechaDisponible->copy()->addMinutes($duracionMin);
+                            $eventoActual->estado   = 'Reagendado';
+                            $eventoActual->save();
+
+                            // 3) El evento "Cancelado" toma el slot original del evento actual
+                            $eventoCancelado->consultorio_id = $consultorioId;
+                            $eventoCancelado->start_at       = $slotStart;
+                            $eventoCancelado->end_at         = $slotEnd;
+                            $eventoCancelado->estado         = 'Pendiente'; // o 'Confirmado' si prefieres
+                            $eventoCancelado->save();
+                        });
+
+                        Notification::make()
+                            ->title('Reasignación completa')
+                            ->body('Se movió la cita actual a la próxima fecha disponible y la cita cancelada tomó su horario.')
+                            ->success()
+                            ->send();
+
+                        $this->dispatch('refreshCalendar');
+                    }),
+
+                \Filament\Forms\Components\Actions\Action::make('cancelar_cita')   // ⬅️ NUEVO
+                    ->label('Cita cancelada')
+                    ->color('danger')
+                    ->icon('heroicon-o-no-symbol')
+                    ->requiresConfirmation() // opcional
+                    ->visible(
+                        fn($record) =>
+                        $record && in_array($record->estado, ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando'])
+                    )
+                    ->action(function ($record) {
+                        $record->update(['estado' => 'Cancelado']);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Cita cancelada')
+                            ->body('La cita fue marcada como Cancelada.')
+                            ->warning()
+                            ->send();
+
+                        $this->dispatch('refreshCalendar'); // si usas el widget/calendario
+                    }),
 
             ])
+
                 ->columnSpanFull()
                 ->hiddenLabel(),
 
@@ -536,6 +770,28 @@ class CalendarWidget extends FullCalendarWidget
                     ->searchable()
                     ->required()
                     ->reactive(),
+
+                Forms\Components\Select::make('doctor_id')
+                    ->label('Doctor')
+                    ->relationship(
+                        name: 'doctor',                      // relación en Event: doctor()
+                        titleAttribute: 'name',
+                        modifyQueryUsing: fn($query) => $query->role('doctor') // solo usuarios con rol doctor
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->nullable() // ✅ el doctor es opcional (doctor_id NULL si no se selecciona)
+                    ->default(function () {
+                        $u = Auth::user();
+                        return ($u instanceof \App\Models\User && $u->hasRole('doctor'))
+                            ? $u->id
+                            : null;
+                    })
+                    ->disabled(function () {
+                        // Si el usuario autenticado es doctor, se autoselecciona y no puede cambiarlo
+                        $u = Auth::user();
+                        return $u instanceof \App\Models\User && $u->hasRole('doctor');
+                    }),
 
                 Forms\Components\DatePicker::make('start_date')
                     ->label('Fecha')
