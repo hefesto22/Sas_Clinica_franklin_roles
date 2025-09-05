@@ -77,14 +77,29 @@ class CalendarWidget extends FullCalendarWidget
                 ->using(function (array $data) {
                     $especialidades = $data['especialidades'] ?? [];
                     $servicios      = $data['servicios'] ?? [];
-                    unset($data['especialidades'], $data['servicios']);
+                    $canceladoId    = $data['cancelado_evento_id'] ?? null;
+
+                    unset($data['especialidades'], $data['servicios'], $data['cancelado_evento_id']);
 
                     $event = Event::create($data);
-                    if ($especialidades) $event->especialidades()->sync($especialidades);
-                    if ($servicios)      $event->servicios()->sync($servicios);
+
+                    if ($especialidades) {
+                        $event->especialidades()->sync($especialidades);
+                    }
+                    if ($servicios) {
+                        $event->servicios()->sync($servicios);
+                    }
+
+                    // 🔹 si era una cancelada, eliminarla
+                    if ($canceladoId) {
+                        Event::where('id', $canceladoId)
+                            ->where('estado', 'Cancelado')
+                            ->delete();
+                    }
 
                     return $event;
                 }),
+
 
             // Filtro por consultorio
             Action::make('filtrarConsultorio')
@@ -122,7 +137,7 @@ class CalendarWidget extends FullCalendarWidget
 
     public function fetchEvents(array $fetchInfo): array
     {
-        return Event::with(['cliente:id,nombre', 'consultorio:id,nombre'])
+        return Event::with(['cliente:id,nombre', 'consultorio:id,nombre', 'doctor:id,name']) // 👈 agrega la relación doctor
             ->whereBetween('start_at', [$fetchInfo['start'], $fetchInfo['end']])
             ->where('estado', '!=', 'Cancelado')   // ⬅️ excluye canceladas
             ->when(!is_null($this->consultorioFilter), function ($q) {
@@ -131,7 +146,9 @@ class CalendarWidget extends FullCalendarWidget
             ->get()
             ->map(fn(Event $event) => [
                 'id'    => $event->id,
-                'title' => ($event->cliente->nombre ?? 'Sin nombre') . ' - ' . ($event->consultorio->nombre ?? 'Sin consultorio'),
+                'title' => ($event->cliente->nombre ?? 'Sin nombre')
+                    . ' - ' . ($event->consultorio->nombre ?? 'Sin consultorio')
+                    . ' - ' . ($event->doctor->name ?? 'Sin doctor'), // 👈 aquí agregamos el doctor
                 'start' => $event->start_at instanceof \Carbon\Carbon ? $event->start_at->toIso8601String() : $event->start_at,
                 'end'   => $event->end_at   instanceof \Carbon\Carbon ? $event->end_at->toIso8601String()   : $event->end_at,
                 'color' => match ($event->estado) {
@@ -144,6 +161,7 @@ class CalendarWidget extends FullCalendarWidget
             ])
             ->all();
     }
+
 
 
     protected function getHeading(): string
@@ -530,7 +548,7 @@ class CalendarWidget extends FullCalendarWidget
                     })
                     ->visible(fn($record) => $record?->estado === 'Pendiente'),
 
-                    
+
                 \Filament\Forms\Components\Actions\Action::make('asignar_cancelado_a_este_horario')
                     ->label('Asignar cancelado a este horario')
                     ->color('secondary')
@@ -682,6 +700,158 @@ class CalendarWidget extends FullCalendarWidget
                 'md'      => 2,   // 2 columnas desde md en adelante
             ])->schema([
 
+                Forms\Components\Select::make('cancelado_evento_id')
+                    ->label('Citas canceladas')
+                    ->searchable()
+                    ->preload()
+                    ->reactive() // <-- importante para recalcular el helperText al seleccionar
+                    ->options(function () {
+                        return \App\Models\Event::query()
+                            ->with([
+                                'cliente:id,nombre',
+                                'consultorio:id,nombre',
+                                'doctor:id,name',
+                            ])
+                            ->where('estado', 'Cancelado')
+                            ->orderByDesc('start_at')
+                            ->limit(200)
+                            ->get()
+                            ->mapWithKeys(function ($e) {
+                                $nombreCliente = $e->cliente->nombre ?? 'Sin nombre';
+                                $fechaStr = \Illuminate\Support\Carbon::parse($e->start_at)
+                                    ->locale('es')
+                                    ->isoFormat('ddd D/MM, h:mm a'); // ej. "vie 12/09, 8:30 a. m."
+
+                                $consultorio = $e->consultorio->nombre ?? 'Sin consultorio';
+                                $doctor      = $e->doctor?->name ? ('Doctor: ' . $e->doctor->name) : null;
+
+                                $partes = array_filter([$nombreCliente, $fechaStr, $consultorio, $doctor]);
+                                return [$e->id => implode(' — ', $partes)];
+                            })
+                            ->toArray();
+                    }),
+
+                // Botones: elegir una sugerencia y autocompletar fecha/hora (y consultorio)
+                Forms\Components\ToggleButtons::make('sugerencia_btn')
+                    ->label('Elegir sugerencia')
+                    ->helperText('Pulsa un botón para colocar automáticamente la fecha y la hora.')
+                    ->inline()
+                    ->multiple(false)
+                    ->reactive()
+                    ->options(function (\Filament\Forms\Get $get) {
+                        $evId = $get('cancelado_evento_id');
+                        if (!$evId) return [];
+
+                        /** @var \App\Models\Event|null $ev */
+                        $ev = \App\Models\Event::find($evId);
+                        if (!$ev) return [];
+
+                        // ✅ Consultorio a usar: primero el del formulario, si no, el de la cancelada
+                        $consultorioId = (int) ($get('consultorio_id') ?: $ev->consultorio_id);
+                        if (!$consultorioId) return [];
+
+                        // Hora preferida (HH:mm) tomada de la cancelada
+                        $horaPref = \Illuminate\Support\Carbon::parse($ev->start_at)->format('H:i');
+
+                        $sugs    = [];
+                        $dia     = now()->startOfDay()->copy();
+                        $maxDias = 60;  // busca hasta 60 días hacia adelante para completar 5 sugerencias
+                        $objetivo = 5;  // 5 sugerencias EXACTAS de 5 días distintos
+
+                        for ($i = 0; $i < $maxDias && count($sugs) < $objetivo; $i++, $dia->addDay()) {
+                            // omitir domingos
+                            if ($dia->isSunday()) continue;
+
+                            $fecha = $dia->format('Y-m-d');
+
+                            // Opciones disponibles del consultorio para ese día
+                            // Debe devolver ['HH:mm' => '08:00 a. m.', ...] solo para $consultorioId
+                            $opc = \App\Helpers\HorarioHelper::opcionesDisponibles($consultorioId, $fecha);
+                            if (empty($opc)) continue;
+
+                            // ✅ Solo sugerimos si la misma hora (horaPref) está libre ese día
+                            if (array_key_exists($horaPref, $opc)) {
+                                $value = $fecha . ' ' . $horaPref; // "YYYY-MM-DD HH:MM"
+                                $label = $dia->locale('es')->isoFormat('ddd D/MM') . ' — ' . $opc[$horaPref];
+
+                                $sugs[$value] = $label;
+                            }
+                        }
+
+                        return $sugs; // Ej: ['2025-09-05 08:00' => 'vie 5/09 — 8:00 a. m.', ...]
+                    })
+
+
+                    ->afterStateUpdated(function ($state, \Filament\Forms\Set $set, \Filament\Forms\Get $get) {
+                        if (! $state) return;
+
+                        try {
+                            // Valor esperado: "YYYY-MM-DD HH:MM"
+                            [$d, $t] = explode(' ', trim($state), 2);
+
+                            // 1) Fecha y hora de inicio
+                            $set('start_date', $d);
+                            $set('start_time', $t);
+
+                            // 2) Hora de finalización (+30 min)
+                            try {
+                                $h = \Illuminate\Support\Carbon::createFromFormat('H:i', $t);
+                                $set('end_time', $h->copy()->addMinutes(30)->format('H:i'));
+                            } catch (\Throwable $e) {
+                                // no-op
+                            }
+
+                            // 3) Datos del evento cancelado (cliente, teléfono, especialidades, servicios, doctor)
+                            $evId = $get('cancelado_evento_id');
+                            if ($evId) {
+                                /** @var \App\Models\Event|null $ev */
+                                $ev = \App\Models\Event::with([
+                                    'cliente:id,telefono',
+                                    'especialidades:id',
+                                    'servicios:id',
+                                ])->find($evId);
+
+                                if ($ev) {
+                                    // (opcional) fijar consultorio SOLO si aún no hay uno seleccionado
+                                    $consultorioActual = $get('consultorio_id');
+                                    if (empty($consultorioActual) && $ev->consultorio_id) {
+                                        $set('consultorio_id', (int) $ev->consultorio_id);
+                                    }
+
+                                    // ✅ Doctor de la cancelada (no sobrescribe si ya hay uno seleccionado)
+                                    $doctorActual = $get('doctor_id');
+                                    if (empty($doctorActual) && $ev->doctor_id) {
+                                        $set('doctor_id', (int) $ev->doctor_id);
+                                    }
+
+                                    // Flag para no limpiar servicios al setear especialidades
+                                    $set('autofill_cancelado', '1');
+
+                                    // Cliente y teléfono (quedan EDITABLES)
+                                    $set('cliente_id', $ev->cliente_id);
+                                    if ($ev->cliente?->telefono) {
+                                        $set('telefono', $ev->cliente->telefono);
+                                    }
+
+                                    // Especialidades y servicios desde la cancelada (EDITABLES)
+                                    $set('especialidades', $ev->especialidades->pluck('id')->toArray());
+                                    $set('servicios', $ev->servicios->pluck('id')->toArray());
+
+                                    // Quitar flag
+                                    $set('autofill_cancelado', null);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // no-op
+                        }
+                    })
+
+
+                    ->hidden(fn(\Filament\Forms\Get $get) => ! $get('cancelado_evento_id')), // solo visible si hay cancelada
+                Forms\Components\TextInput::make('autofill_cancelado')
+                    ->hidden()
+                    ->dehydrated(false),
+
                 // Fila 1
                 Forms\Components\Select::make('cliente_id')
                     ->label('Cliente')
@@ -798,12 +968,27 @@ class CalendarWidget extends FullCalendarWidget
                     ->required()
                     ->reactive()
                     ->native(false)
-                    ->minDate(now())
-                    ->rule(function () {
-                        return function (string $attribute, $value, $fail) {
+                    ->minDate(\Illuminate\Support\Carbon::today())
+                    ->rule(function (\Filament\Forms\Get $get) {
+                        return function (string $attribute, $value, $fail) use ($get) {
                             $fecha = \Illuminate\Support\Carbon::parse($value);
+
+                            // No domingos
                             if ($fecha->isSunday()) {
                                 $fail('Los domingos no se trabaja. Por favor seleccione otro día.');
+                                return;
+                            }
+
+                            // Si hay una cancelada seleccionada: exigir fecha estrictamente posterior
+                            $evId = $get('cancelado_evento_id');
+                            if ($evId) {
+                                $ev = \App\Models\Event::find($evId);
+                                if ($ev && $ev->start_at) {
+                                    $fechaCancelada = \Illuminate\Support\Carbon::parse($ev->start_at)->toDateString();
+                                    if ($fecha->toDateString() <= $fechaCancelada) {
+                                        $fail('La fecha debe ser estrictamente posterior a la fecha de la cita cancelada.');
+                                    }
+                                }
                             }
                         };
                     }),
@@ -836,6 +1021,7 @@ class CalendarWidget extends FullCalendarWidget
                     ->seconds(false)
                     ->step(20),
             ]),
+
         ];
     }
 }

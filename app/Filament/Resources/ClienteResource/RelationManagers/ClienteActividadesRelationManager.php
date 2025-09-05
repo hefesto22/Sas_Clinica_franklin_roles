@@ -12,7 +12,7 @@ class ClienteActividadesRelationManager extends RelationManager
 {
     protected static string $relationship = 'actividades';
     protected static ?string $title = 'Actividades';
-    protected static ?string $recordTitleAttribute = 'actividad';
+    
 
     public function form(Form $form): Form
     {
@@ -23,10 +23,15 @@ class ClienteActividadesRelationManager extends RelationManager
                 ->native(false)
                 ->closeOnDateSelection(),
 
-            Forms\Components\TextInput::make('actividad')
+            Forms\Components\Textarea::make('actividad')
                 ->label('Actividad')
-                ->required()
-                ->maxLength(255),
+                ->rows(3)                 // alto pequeño
+                ->autosize(false)         // no crece automáticamente
+                ->maxLength(1000)
+                ->placeholder('Descripción de la actividad…')
+                ->extraInputAttributes([
+                    'style' => 'max-height:120px; overflow-y:auto; resize:vertical;' // scroll vertical y permite redimensionar si quiere
+                ]),
 
             Forms\Components\TextInput::make('pago')
                 ->label('Pago')
@@ -47,7 +52,10 @@ class ClienteActividadesRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('actividad')
                     ->label('Actividad')
-                    ->searchable(),
+                    ->wrap()                 // permite salto de línea
+                    ->limit(80)              // muestra un resumen
+                    ->tooltip(fn($record) => $record->actividad), // ver completo al pasar el mouse
+                // ->lineClamp(3) // alternativa visual si prefieres 3 líneas con “…” (Filament v3)
 
                 Tables\Columns\TextColumn::make('pago')
                     ->label('Pago')

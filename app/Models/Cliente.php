@@ -58,4 +58,10 @@ class Cliente extends Model
     {
         return $this->hasMany(\App\Models\ClienteNota::class);
     }
+    public function evaluaciones()
+    {
+        // si quieres las más recientes primero:
+        return $this->hasMany(Evaluacion::class)->latest('fecha');
+        // o simplemente: return $this->hasMany(Evaluacion::class);
+    }
 }

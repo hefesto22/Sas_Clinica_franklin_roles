@@ -165,6 +165,7 @@ class ClienteResource extends Resource
             \App\Filament\Resources\ClienteResource\RelationManagers\ClienteActividadesRelationManager::class,
             \App\Filament\Resources\ClienteResource\RelationManagers\ClienteImagenesRelationManager::class,
             \App\Filament\Resources\ClienteResource\RelationManagers\ClienteNotasRelationManager::class,
+            \App\Filament\Resources\ClienteResource\RelationManagers\EvaluacionesRelationManager::class,
         ];
     }
 
