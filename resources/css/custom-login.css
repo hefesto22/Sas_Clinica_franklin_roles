@@ -1,0 +1,4 @@
+/* Fondo solo para el login de Filament */
+.fi-auth {
+    background: url('/images/filament.png') center center / cover no-repeat fixed !important;
+}

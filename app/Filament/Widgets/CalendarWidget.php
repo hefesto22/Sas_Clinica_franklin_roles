@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\ClienteNota;
 use App\Models\ClienteActividad;
-//aca ya sirve refrescando manua 
+//aca ya sirve refrescando manua
 class CalendarWidget extends FullCalendarWidget
 {
     public Model | string | null $model = Event::class;

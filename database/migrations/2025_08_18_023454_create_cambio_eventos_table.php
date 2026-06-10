@@ -50,11 +50,16 @@ return new class extends Migration
         });
 
         // Tabla detalles por pieza dental
+        // Tabla detalles por pieza dental
         Schema::create('evaluacion_detalles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('evaluacion_id')->constrained('evaluaciones')->cascadeOnDelete();
             $table->string('pieza', 3); // ej. “18”, “11”, “21”, etc.
             $table->text('diagnostico')->nullable();
+
+            // ✅ Nuevo campo para el checkbox
+            $table->boolean('hecho')->default(false);
+
             $table->timestamps();
 
             $table->unique(['evaluacion_id', 'pieza']);

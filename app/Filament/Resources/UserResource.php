@@ -72,13 +72,6 @@ class UserResource extends Resource
                     ->maxLength(100)
                     ->visible(false),
 
-                Forms\Components\DateTimePicker::make('created_at')
-                    ->label('Creado el')
-                    ->disabled(),
-
-                Forms\Components\DateTimePicker::make('updated_at')
-                    ->label('Actualizado el')
-                    ->disabled(),
             ]);
     }
 

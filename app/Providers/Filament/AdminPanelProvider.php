@@ -19,18 +19,26 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
+use Filament\Support\Enums\Alignment;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        $logo = config('app.logo');
         return $panel
             ->default()
             ->id('admin')
             ->path('admin')
+            ->brandName(config('app.name'))
+            // si hay logo, úsalo
+            ->brandLogo($logo ? asset($logo) : null)
+            ->brandLogoHeight('12.0rem')
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('18rem')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#39C928'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -56,7 +64,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
                 FilamentFullCalendarPlugin::make()
-                    ->plugins(['dayGrid', 'timeGrid', 'interaction']) 
+                    ->plugins(['dayGrid', 'timeGrid', 'interaction'])
                     ->selectable(),
 
             ])

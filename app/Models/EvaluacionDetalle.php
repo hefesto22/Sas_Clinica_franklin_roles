@@ -10,6 +10,7 @@ class EvaluacionDetalle extends Model
         'evaluacion_id',
         'pieza',
         'diagnostico',
+        'hecho', // Nuevo campo para el checkbox
     ];
 
     public function evaluacion()
