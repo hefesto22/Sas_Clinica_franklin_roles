@@ -33,6 +33,11 @@ class Event extends Model
         'updated_by',
     ];
 
+    protected $casts = [
+        'start_at' => 'datetime',
+        'end_at'   => 'datetime',
+    ];
+
     /* Relaciones */
     public function cliente()
     {

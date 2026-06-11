@@ -407,34 +407,13 @@ class CalendarWidget extends FullCalendarWidget
                         ];
                     })
                     ->action(function ($record, array $data) {
-                        DB::transaction(function () use ($record, $data) {
-                            // 1) Registrar actividad
-                            ClienteActividad::create([
-                                'cliente_id' => $record->cliente_id,
-                                'fecha'      => now(),
-                                'actividad'  => $data['actividad'],
-                                'pago'       => $data['pago'] ?? 0,
-                            ]);
-
-                            // 2) Guardar nueva nota (opcional)
-                            if (!empty($data['nota'])) {
-                                ClienteNota::create([
-                                    'cliente_id' => $record->cliente_id,
-                                    'contenido'  => $data['nota'],
-                                    'leida'      => 0,
-                                    'created_by' => Auth::id(),
-                                ]);
-                            }
-
-                            // 3) Marcar como leídas SOLO las seleccionadas
-                            if (!empty($data['nota_ids_a_marcar'])) {
-                                ClienteNota::whereIn('id', $data['nota_ids_a_marcar'])
-                                    ->update(['leida' => 1, 'updated_at' => now()]);
-                            }
-
-                            // 4) Eliminar la cita (ya atendida)
-                            $record->delete();
-                        });
+                        app(\App\Services\Pacientes\AsistenciaService::class)->registrar(
+                            cita: $record,
+                            actividad: $data['actividad'],
+                            pago: $data['pago'] ?? null,
+                            nuevaNota: $data['nota'] ?? null,
+                            notasLeidasIds: $data['nota_ids_a_marcar'] ?? [],
+                        );
 
                         Notification::make()
                             ->title('Asistencia registrada')

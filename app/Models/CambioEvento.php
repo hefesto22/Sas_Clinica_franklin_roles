@@ -18,7 +18,6 @@ class CambioEvento extends Model
         'created_by',
         'approved_by',
         'estado',
-        'tipo',
         'motivo_cancelacion',
         'aprobado_en',
         'rechazado_en',
