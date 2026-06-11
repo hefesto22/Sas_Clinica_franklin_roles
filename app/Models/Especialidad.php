@@ -33,6 +33,6 @@ class Especialidad extends Model
 
     public function servicios()
     {
-        return $this->hasMany(\App\Models\ServicioEspecialidad::class, 'especialidad_id');
+        return $this->hasMany(ServicioEspecialidad::class, 'especialidad_id');
     }
 }

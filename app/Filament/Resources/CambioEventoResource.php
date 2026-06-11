@@ -2,10 +2,21 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\CambioEventoResource\Pages\ListCambioEventos;
+use App\Filament\Resources\CambioEventoResource\Pages\CreateCambioEvento;
+use App\Filament\Resources\CambioEventoResource\Pages\EditCambioEvento;
 use App\Filament\Resources\CambioEventoResource\Pages;
 use App\Models\CambioEvento;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,15 +26,15 @@ class CambioEventoResource extends Resource
 {
     protected static ?string $model = CambioEvento::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
-    protected static ?string $navigationGroup = 'Citas';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-arrows-right-left';
+    protected static string | \UnitEnum | null $navigationGroup = 'Citas';
     protected static ?string $modelLabel = 'Cambio de Evento';
     protected static ?string $pluralModelLabel = 'Solicitudes de Cambio';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Select::make('estado')
+        return $schema->components([
+            Select::make('estado')
                 ->label('Estado de solicitud')
                 ->options([
                     'pendiente' => 'Pendiente',
@@ -33,7 +44,7 @@ class CambioEventoResource extends Resource
                 ])
                 ->required(),
 
-            Forms\Components\Textarea::make('motivo_cancelacion')
+            Textarea::make('motivo_cancelacion')
                 ->label('Motivo de cancelación')
                 ->visible(fn($get) => $get('estado') === 'cancelado'),
         ]);
@@ -42,15 +53,15 @@ class CambioEventoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('eventoOrigen.cliente.nombre')
+            TextColumn::make('eventoOrigen.cliente.nombre')
                 ->label('Paciente Original')
                 ->searchable(),
 
-            Tables\Columns\TextColumn::make('eventoDestino.cliente.nombre')
+            TextColumn::make('eventoDestino.cliente.nombre')
                 ->label('Paciente Alternativo')
                 ->searchable(),
 
-            Tables\Columns\TextColumn::make('estado')
+            TextColumn::make('estado')
                 ->label('Estado')
                 ->badge()
                 ->color(fn(string $state): string => match ($state) {
@@ -60,19 +71,19 @@ class CambioEventoResource extends Resource
                     default => 'gray',
                 }),
 
-            Tables\Columns\TextColumn::make('creador.name')
+            TextColumn::make('creador.name')
                 ->label('Solicitado por')
                 ->searchable(),
 
-            Tables\Columns\TextColumn::make('created_at')
+            TextColumn::make('created_at')
                 ->label('Fecha')
                 ->dateTime('d/m/Y h:i A'),
         ])
             ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('contactar')
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                Action::make('contactar')
                     ->label('Contactar')
                     ->icon('heroicon-o-phone')
                     ->color('success')
@@ -83,9 +94,9 @@ class CambioEventoResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn(CambioEvento $record) => filled($record->eventoDestino?->cliente?->telefono)),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -94,9 +105,9 @@ class CambioEventoResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCambioEventos::route('/'),
-            'create' => Pages\CreateCambioEvento::route('/create'),
-            'edit' => Pages\EditCambioEvento::route('/{record}/edit'),
+            'index' => ListCambioEventos::route('/'),
+            'create' => CreateCambioEvento::route('/create'),
+            'edit' => EditCambioEvento::route('/{record}/edit'),
         ];
     }
 }

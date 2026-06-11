@@ -46,17 +46,17 @@ class Cliente extends Model
 
     public function actividades()
     {
-        return $this->hasMany(\App\Models\ClienteActividad::class);
+        return $this->hasMany(ClienteActividad::class);
     }
 
     public function imagenes()
     {
-        return $this->hasMany(\App\Models\ClienteImagen::class);
+        return $this->hasMany(ClienteImagen::class);
     }
 
     public function notas()
     {
-        return $this->hasMany(\App\Models\ClienteNota::class);
+        return $this->hasMany(ClienteNota::class);
     }
     public function evaluaciones()
     {

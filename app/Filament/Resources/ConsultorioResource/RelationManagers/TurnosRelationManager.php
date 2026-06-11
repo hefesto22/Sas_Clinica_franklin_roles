@@ -2,8 +2,21 @@
 
 namespace App\Filament\Resources\ConsultorioResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Support\Exceptions\Halt;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -18,12 +31,12 @@ class TurnosRelationManager extends RelationManager
     protected static ?string $title = 'Horarios y días de atención';
 
     // Crear/editar un turno individual
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $modoConsultorio = optional($this->getOwnerRecord())->modo_defecto ?? 'horario';
 
-        return $form->schema([
-            Forms\Components\Select::make('dia_semana')
+        return $schema->components([
+            Select::make('dia_semana')
                 ->label('Día de la semana')
                 ->options([
                     1 => 'Lunes',
@@ -37,37 +50,37 @@ class TurnosRelationManager extends RelationManager
                 ->required(),
 
             // ⬇️ aquí van las horas enteras desde el helper
-            Forms\Components\Select::make('hora_inicio')
+            Select::make('hora_inicio')
                 ->label('Hora inicio')
                 ->options(HorarioHelper::horasEnteras()) // ['06:00' => '6:00 AM', ...]
                 ->required()
                 ->native(false),
 
-            Forms\Components\Select::make('hora_fin')
+            Select::make('hora_fin')
                 ->label('Hora fin')
                 ->options(HorarioHelper::horasEnteras())
                 ->required()
                 ->native(false),
 
-            Forms\Components\Hidden::make('modo')->default($modoConsultorio),
+            Hidden::make('modo')->default($modoConsultorio),
 
-            Forms\Components\Placeholder::make('modo_info')
+            Placeholder::make('modo_info')
                 ->label('Modo')
                 ->content(fn($get) => $get('modo') === 'horario'
                     ? 'Horario (intervalos) — heredado del consultorio'
                     : 'Cupos por hora — heredado del consultorio'),
 
-            Forms\Components\TextInput::make('slot_minutos')
+            TextInput::make('slot_minutos')
                 ->label('Duración del slot (min)')
                 ->numeric()->minValue(5)->default(30)
                 ->visible(fn($get) => ($get('modo') ?? $modoConsultorio) === 'horario'),
 
-            Forms\Components\TextInput::make('cupos_por_hora')
+            TextInput::make('cupos_por_hora')
                 ->label('Cupos por hora')
                 ->numeric()->minValue(1)->default(6)
                 ->visible(fn($get) => ($get('modo') ?? $modoConsultorio) === 'cupos'),
 
-            Forms\Components\Toggle::make('activo')->label('Activo')->default(true),
+            Toggle::make('activo')->label('Activo')->default(true),
         ])->columns(2);
     }
 
@@ -78,7 +91,7 @@ class TurnosRelationManager extends RelationManager
         $modoConsultorio = optional($this->getOwnerRecord())->modo_defecto ?? 'horario';
 
         return [
-            Forms\Components\CheckboxList::make('dias')
+            CheckboxList::make('dias')
                 ->label('Días de la semana')
                 ->options([
                     1 => 'Lunes',
@@ -92,35 +105,35 @@ class TurnosRelationManager extends RelationManager
                 ->columns(2)->required()
                 ->helperText('Se creará un turno para cada día seleccionado.'),
 
-            Forms\Components\Select::make('hora_inicio')
+            Select::make('hora_inicio')
                 ->label('Hora inicio')
                 ->options(HorarioHelper::horasEnteras())
                 ->required()
                 ->native(false),
 
-            Forms\Components\Select::make('hora_fin')
+            Select::make('hora_fin')
                 ->label('Hora fin')
                 ->options(HorarioHelper::horasEnteras())
                 ->required()
                 ->native(false),
 
-            Forms\Components\Placeholder::make('modo_info')
+            Placeholder::make('modo_info')
                 ->label('Modo')
                 ->content($modoConsultorio === 'horario'
                     ? 'Horario (intervalos) — heredado del consultorio'
                     : 'Cupos por hora — heredado del consultorio'),
 
-            Forms\Components\TextInput::make('slot_minutos')
+            TextInput::make('slot_minutos')
                 ->label('Duración del slot (min)')
                 ->numeric()->minValue(5)->default(30)
                 ->visible($modoConsultorio === 'horario'),
 
-            Forms\Components\TextInput::make('cupos_por_hora')
+            TextInput::make('cupos_por_hora')
                 ->label('Cupos por hora')
                 ->numeric()->minValue(1)->default(6)
                 ->visible($modoConsultorio === 'cupos'),
 
-            Forms\Components\Toggle::make('activo')->label('Activo')->default(true),
+            Toggle::make('activo')->label('Activo')->default(true),
         ];
     }
 
@@ -129,7 +142,7 @@ class TurnosRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('dia_semana')
+                TextColumn::make('dia_semana')
                     ->label('Día')->sortable()
                     ->formatStateUsing(fn($state) => [
                         1 => 'Lunes',
@@ -141,34 +154,34 @@ class TurnosRelationManager extends RelationManager
                         7 => 'Domingo',
                     ][$state] ?? $state),
 
-                Tables\Columns\TextColumn::make('hora_inicio')
+                TextColumn::make('hora_inicio')
                     ->label('Inicio')->sortable()
                     ->formatStateUsing(fn(?string $state) =>
                     $state !== null ? (HorarioHelper::horasEnteras()[$state] ?? $state) : null),
 
-                Tables\Columns\TextColumn::make('hora_fin')
+                TextColumn::make('hora_fin')
                     ->label('Fin')->sortable()
                     ->formatStateUsing(fn(?string $state) =>
                     $state !== null ? (HorarioHelper::horasEnteras()[$state] ?? $state) : null),
 
 
                 // Mostrar el modo guardado (si falta, hereda)
-                Tables\Columns\TextColumn::make('modo')
+                TextColumn::make('modo')
                     ->label('Modo')->badge()
                     ->formatStateUsing(fn($state, $record) =>
                     $state ?? ($record->consultorio->modo_defecto ?? 'horario'))
                     ->color(fn($state, $record) => ($state ?? ($record->consultorio->modo_defecto ?? 'horario')) === 'horario'
                         ? 'success' : 'warning'),
 
-                Tables\Columns\TextColumn::make('slot_minutos')->label('Slot (min)')->toggleable(),
-                Tables\Columns\TextColumn::make('cupos_por_hora')->label('Cupos/hora')->toggleable(),
-                Tables\Columns\IconColumn::make('activo')->label('Activo')->boolean(),
+                TextColumn::make('slot_minutos')->label('Slot (min)')->toggleable(),
+                TextColumn::make('cupos_por_hora')->label('Cupos/hora')->toggleable(),
+                IconColumn::make('activo')->label('Activo')->boolean(),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('agregarTurnos')
+                Action::make('agregarTurnos')
                     ->label('Agregar turnos')
                     ->icon('heroicon-o-plus')
-                    ->form(fn() => $this->bulkSchema())
+                    ->schema(fn() => $this->bulkSchema())
                     ->action(function (array $data) {
                         $owner = $this->getOwnerRecord();
                         $dias  = $data['dias'] ?? [];
@@ -209,19 +222,19 @@ class TurnosRelationManager extends RelationManager
                         Notification::make()->title('Turnos creados correctamente')->success()->send();
                     }),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
-                    ->mutateFormDataUsing(function (array $data) {
+            ->recordActions([
+                EditAction::make()
+                    ->mutateDataUsing(function (array $data) {
                         if (($data['hora_inicio'] ?? '00:00') >= ($data['hora_fin'] ?? '00:00')) {
-                            throw new \Filament\Support\Exceptions\Halt();
+                            throw new Halt();
                         }
                         // No tocamos 'modo': ya está guardado
                         return $data;
                     }),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 }

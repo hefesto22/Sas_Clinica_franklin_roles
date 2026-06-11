@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\EventResource\Pages;
 
+use Filament\Actions\DeleteAction;
+use App\Models\Consultorio;
 use App\Filament\Resources\EventResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -18,7 +20,7 @@ class EditEvent extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
     protected function mutateFormDataBeforeSave(array $data): array
@@ -49,7 +51,7 @@ class EditEvent extends EditRecord
         $end   = Carbon::parse($data['end_at']);
 
         // Detectar modo del turno para esa fecha/hora
-        $consultorio = \App\Models\Consultorio::with('turnos')->findOrFail($cid);
+        $consultorio = Consultorio::with('turnos')->findOrFail($cid);
         $dia = HorarioHelper::dayOfWeek(($fecha));
         $turno = $consultorio->turnos()
             ->where('dia_semana', $dia)

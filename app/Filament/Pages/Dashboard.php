@@ -2,13 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\CalendarWidget;
 use Filament\Pages\Page;
 
 class Dashboard extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-home';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-home';
     protected static ?string $navigationLabel = 'Inicio';
-    protected static string $view = 'filament.pages.dashboard';
+    protected string $view = 'filament.pages.dashboard';
 
     public function getTitle(): string
     {
@@ -17,7 +18,7 @@ class Dashboard extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Widgets\CalendarWidget::class,
+            CalendarWidget::class,
         ];
     }
 }

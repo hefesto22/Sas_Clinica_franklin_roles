@@ -2,8 +2,16 @@
 
 namespace App\Filament\Resources\EspecialidadResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,10 +23,10 @@ class ServicioEspecialidadRelationManager extends RelationManager
     protected static string $relationship = 'servicios';
     protected static ?string $title = 'Servicios';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\TextInput::make('nombre')
+        return $schema->components([
+            TextInput::make('nombre')
                 ->label('Nombre del servicio')
                 ->required()
                 ->maxLength(255)
@@ -28,12 +36,12 @@ class ServicioEspecialidadRelationManager extends RelationManager
                     $rule->where('especialidad_id', $this->getOwnerRecord()->getKey())
                 ),
 
-            Forms\Components\Textarea::make('descripcion')
+            Textarea::make('descripcion')
                 ->label('Descripción')
                 ->rows(3)
                 ->nullable(),
 
-            Forms\Components\TextInput::make('precio')
+            TextInput::make('precio')
                 ->label('Precio')
                 ->numeric()
                 ->rule('decimal:0,2')
@@ -41,7 +49,7 @@ class ServicioEspecialidadRelationManager extends RelationManager
                 ->nullable(),
 
             // Mostrar en edición si quieres permitir cambiarlo:
-            Forms\Components\Select::make('estado')
+            Select::make('estado')
                 ->label('Estado')
                 ->options(['activo' => 'Activo', 'inactivo' => 'Inactivo'])
                 ->visibleOn('edit'), // oculto en Create
@@ -51,22 +59,22 @@ class ServicioEspecialidadRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
-            Tables\Columns\TextColumn::make('descripcion')->label('Descripción')->limit(50),
-            Tables\Columns\TextColumn::make('precio')->label('Precio')->money('USD', true)->sortable(),
-            Tables\Columns\TextColumn::make('estado')->label('Estado')->badge()
+            TextColumn::make('nombre')->label('Nombre')->searchable()->sortable(),
+            TextColumn::make('descripcion')->label('Descripción')->limit(50),
+            TextColumn::make('precio')->label('Precio')->money('USD', true)->sortable(),
+            TextColumn::make('estado')->label('Estado')->badge()
                 ->color(fn($state) => match ($state) {
                     'activo' => 'success',
                     'inactivo' => 'danger',
                     default => 'gray',
                 }),
 
-            Tables\Columns\TextColumn::make('creador.name')->label('Creado por')->toggleable(isToggledHiddenByDefault: true),
-            Tables\Columns\TextColumn::make('created_at')->label('Registrado')->dateTime('d/m/Y H:i')->sortable(),
+            TextColumn::make('creador.name')->label('Creado por')->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('created_at')->label('Registrado')->dateTime('d/m/Y H:i')->sortable(),
         ])
-            ->headerActions([Tables\Actions\CreateAction::make()])
-            ->actions([Tables\Actions\EditAction::make(), Tables\Actions\DeleteAction::make()])
-            ->bulkActions([Tables\Actions\DeleteBulkAction::make()]);
+            ->headerActions([CreateAction::make()])
+            ->recordActions([EditAction::make(), DeleteAction::make()])
+            ->toolbarActions([DeleteBulkAction::make()]);
     }
 
     // ==== HOOKS CLAVE ====

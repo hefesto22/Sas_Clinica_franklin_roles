@@ -2,8 +2,17 @@
 
 namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,10 +25,10 @@ class ClienteImagenesRelationManager extends RelationManager
     protected static ?string $title = 'Imágenes';
     protected static ?string $recordTitleAttribute = 'path';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\FileUpload::make('path')
+        return $schema->components([
+            FileUpload::make('path')
                 ->label('Imagen')
                 ->image()
                 ->directory('clientes')   // storage/app/public/clientes
@@ -35,25 +44,25 @@ class ClienteImagenesRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('path')
+                ImageColumn::make('path')
                     ->label('Imagen')
                     ->disk('public')
                     ->height('80px')
                     ->width('80px')
                     ->extraImgAttributes(['class' => 'rounded-xl object-cover']),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Subida')
                     ->since()
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     // Oculta el botón si ya hay 7 imágenes
                     ->hidden(fn() => $this->getOwnerRecord()->imagenes()->count() >= 7),
             ])
-            ->actions([
-                Tables\Actions\Action::make('preview')
+            ->recordActions([
+                Action::make('preview')
                     ->label('Previsualizar')
                     ->icon('heroicon-o-eye')
                     ->modalHeading('Vista previa')
@@ -66,12 +75,12 @@ class ClienteImagenesRelationManager extends RelationManager
                             "<img src=\"{$url}\" alt=\"Vista\" class=\"w-full max-h-[80vh] object-contain rounded-xl\" />"
                         );
                     }),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

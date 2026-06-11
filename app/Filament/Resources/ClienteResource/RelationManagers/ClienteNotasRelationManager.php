@@ -2,13 +2,22 @@
 
 namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Filament\Tables\Actions\Action;
 
 class ClienteNotasRelationManager extends RelationManager
 {
@@ -16,15 +25,15 @@ class ClienteNotasRelationManager extends RelationManager
     protected static ?string $title = 'Notas rápidas';
     protected static ?string $recordTitleAttribute = 'contenido';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Textarea::make('contenido')
+        return $schema->components([
+            Textarea::make('contenido')
                 ->label('Nota')
                 ->rows(4)
                 ->required(),
 
-            Forms\Components\Toggle::make('leida')
+            Toggle::make('leida')
                 ->label('¿Leída?')
                 ->default(false),
         ]);
@@ -34,43 +43,43 @@ class ClienteNotasRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('contenido')
+                TextColumn::make('contenido')
                     ->label('Nota')
                     ->limit(50)
                     ->tooltip(fn($record) => $record->contenido)
                     ->wrap()
                     ->searchable(),
 
-                Tables\Columns\IconColumn::make('leida')
+                IconColumn::make('leida')
                     ->label('Leída')
                     ->boolean(),
 
-                Tables\Columns\TextColumn::make('creador.name')
+                TextColumn::make('creador.name')
                     ->label('Creado por')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Creada')
                     ->since()
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
-            ->actions([
+            ->recordActions([
                 Action::make('mark_read')
                     ->label('Marcar como leída')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn($record) => ! $record->leida)
                     ->action(fn($record) => $record->update(['leida' => true])),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

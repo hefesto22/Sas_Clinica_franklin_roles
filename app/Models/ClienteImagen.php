@@ -19,6 +19,6 @@ class ClienteImagen extends Model
 
     public function cliente(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Cliente::class);
+        return $this->belongsTo(Cliente::class);
     }
 }

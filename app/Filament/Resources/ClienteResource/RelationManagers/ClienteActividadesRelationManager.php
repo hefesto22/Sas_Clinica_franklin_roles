@@ -2,8 +2,17 @@
 
 namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,16 +23,16 @@ class ClienteActividadesRelationManager extends RelationManager
     protected static ?string $title = 'Actividades';
     
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\DatePicker::make('fecha')
+        return $schema->components([
+            DatePicker::make('fecha')
                 ->label('Fecha')
                 ->required()
                 ->native(false)
                 ->closeOnDateSelection(),
 
-            Forms\Components\Textarea::make('actividad')
+            Textarea::make('actividad')
                 ->label('Actividad')
                 ->rows(3)                 // alto pequeño
                 ->autosize(false)         // no crece automáticamente
@@ -33,7 +42,7 @@ class ClienteActividadesRelationManager extends RelationManager
                     'style' => 'max-height:120px; overflow-y:auto; resize:vertical;' // scroll vertical y permite redimensionar si quiere
                 ]),
 
-            Forms\Components\TextInput::make('pago')
+            TextInput::make('pago')
                 ->label('Pago')
                 ->numeric()
                 ->prefix('$')
@@ -45,38 +54,38 @@ class ClienteActividadesRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('fecha')
+                TextColumn::make('fecha')
                     ->label('Fecha')
                     ->date()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('actividad')
+                TextColumn::make('actividad')
                     ->label('Actividad')
                     ->wrap()                 // permite salto de línea
                     ->limit(80)              // muestra un resumen
                     ->tooltip(fn($record) => $record->actividad), // ver completo al pasar el mouse
                 // ->lineClamp(3) // alternativa visual si prefieres 3 líneas con “…” (Filament v3)
 
-                Tables\Columns\TextColumn::make('pago')
+                TextColumn::make('pago')
                     ->label('Pago')
                     ->money('USD', true) // muestra con formato de dinero
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Registrado')
                     ->since()
                     ->sortable(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

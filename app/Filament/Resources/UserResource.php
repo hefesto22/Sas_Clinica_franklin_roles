@@ -2,10 +2,18 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Filament\Resources\UserResource\Pages\CreateUser;
+use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -19,35 +27,35 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user';
     protected static ?string $navigationLabel = 'Usuarios';
     protected static ?string $pluralModelLabel = 'Usuarios';
     protected static ?string $modelLabel = 'Usuario';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('Nombre')
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\TextInput::make('email')
+                TextInput::make('email')
                     ->label('Correo electrónico')
                     ->email()
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
 
-                Forms\Components\TextInput::make('password')
+                TextInput::make('password')
                     ->label('Contraseña')
                     ->password()
                     ->dehydrateStateUsing(fn($state) => Hash::needsRehash($state) ? bcrypt($state) : $state)
                     ->required(fn(string $context) => $context === 'create')
                     ->maxLength(255),
 
-                Forms\Components\Select::make('roles')
+                Select::make('roles')
                     ->label('Rol')
                     ->relationship('roles', 'name')
                     ->multiple()
@@ -68,7 +76,7 @@ class UserResource extends Resource
                         return $query->pluck('name', 'id');
                     }),
 
-                Forms\Components\TextInput::make('remember_token')
+                TextInput::make('remember_token')
                     ->maxLength(100)
                     ->visible(false),
 
@@ -78,18 +86,18 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            Tables\Columns\TextColumn::make('id')->sortable()->searchable(),
-            Tables\Columns\TextColumn::make('name')->label('Nombre')->searchable(),
-            Tables\Columns\TextColumn::make('email')->label('Correo')->searchable(),
-            Tables\Columns\TextColumn::make('created_at')->label('Creado')->dateTime()->sortable(),
-            Tables\Columns\TextColumn::make('updated_at')->label('Actualizado')->dateTime()->sortable(),
+            TextColumn::make('id')->sortable()->searchable(),
+            TextColumn::make('name')->label('Nombre')->searchable(),
+            TextColumn::make('email')->label('Correo')->searchable(),
+            TextColumn::make('created_at')->label('Creado')->dateTime()->sortable(),
+            TextColumn::make('updated_at')->label('Actualizado')->dateTime()->sortable(),
         ])
             ->filters([])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 
@@ -135,9 +143,9 @@ class UserResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
-            'edit' => Pages\EditUser::route('/{record}/edit'),
+            'index' => ListUsers::route('/'),
+            'create' => CreateUser::route('/create'),
+            'edit' => EditUser::route('/{record}/edit'),
         ];
     }
 }

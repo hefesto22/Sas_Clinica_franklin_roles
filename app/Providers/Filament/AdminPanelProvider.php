@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
 use Filament\Http\Middleware\Authenticate;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -33,22 +36,22 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(config('app.name'))
             // si hay logo, úsalo
             ->brandLogo($logo ? asset($logo) : null)
-            ->brandLogoHeight('12.0rem')
+            ->brandLogoHeight('5.0rem')
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('18rem')
             ->login()
             ->colors([
-                'primary' => Color::hex('#39C928'),
+                'primary' => Color::generateV3Palette('#39C928'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                \App\Filament\Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
+                AccountWidget::class,
+                FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

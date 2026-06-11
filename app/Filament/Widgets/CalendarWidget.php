@@ -2,6 +2,28 @@
 
 namespace App\Filament\Widgets;
 
+use Filament\Schemas\Schema;
+use App\Services\Agenda\AgendaService;
+use App\Exceptions\Agenda\AgendaException;
+use Illuminate\Validation\ValidationException;
+use Filament\Forms\Components\Select;
+use App\Models\Consultorio;
+use App\Models\ServicioEspecialidad;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Components\Grid;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Throwable;
+use App\Models\Cliente;
+use Closure;
+use App\Models\Especialidad;
+use App\Models\User;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TimePicker;
 use Filament\Widgets\Widget;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Filament\Resources\EventResource;
@@ -15,9 +37,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Helpers\HorarioHelper;
 use Saade\FilamentFullCalendar\Actions;
 use Saade\FilamentFullCalendar\Actions\CreateAction;
-
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Livewire\Attributes\Url;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -41,12 +60,12 @@ class CalendarWidget extends FullCalendarWidget
     {
         return [
             // Crear evento
-            \Saade\FilamentFullCalendar\Actions\CreateAction::make()
+            CreateAction::make()
                 ->label('Crear evento')
                 ->icon('heroicon-o-plus')
-                ->form(fn() => $this->getCreateFormSchema())
-                ->mountUsing(function (Forms\Form $form, array $arguments) {
-                    $form->fill([
+                ->schema(fn() => $this->getCreateFormSchema())
+                ->mountUsing(function (Schema $schema, array $arguments) {
+                    $schema->fill([
                         'start_date' => isset($arguments['start'])
                             ? Carbon::parse($arguments['start'])->format('Y-m-d')
                             : now()->format('Y-m-d'),
@@ -58,7 +77,7 @@ class CalendarWidget extends FullCalendarWidget
                             : null,
                     ]);
                 })
-                ->mutateFormDataUsing(function (array $data): array {
+                ->mutateDataUsing(function (array $data): array {
                     $start = Carbon::parse("{$data['start_date']} {$data['start_time']}:00");
                     $end   = isset($data['end_time'])
                         ? Carbon::parse("{$data['start_date']} {$data['end_time']}:00")
@@ -83,13 +102,13 @@ class CalendarWidget extends FullCalendarWidget
 
                     try {
                         // Reglas de negocio + transacción con lock en el Service
-                        return app(\App\Services\Agenda\AgendaService::class)->agendar(
+                        return app(AgendaService::class)->agendar(
                             data: $data,
                             especialidades: $especialidades ?: [],
                             servicios: $servicios ?: [],
                             canceladoEventoId: $canceladoId ? (int) $canceladoId : null,
                         );
-                    } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                    } catch (AgendaException $e) {
                         Notification::make()
                             ->title('No se pudo agendar la cita')
                             ->body($e->getMessage())
@@ -97,7 +116,7 @@ class CalendarWidget extends FullCalendarWidget
                             ->send();
 
                         // Mantiene el modal abierto mostrando el motivo
-                        throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw ValidationException::withMessages([
                             'start_time' => $e->getMessage(),
                         ]);
                     }
@@ -109,12 +128,12 @@ class CalendarWidget extends FullCalendarWidget
                 ->label('Filtrar por consultorio')
                 ->icon('heroicon-o-funnel')
                 ->color('gray')
-                ->form([
-                    Forms\Components\Select::make('consultorio_id')
+                ->schema([
+                    Select::make('consultorio_id')
                         ->label('Consultorio')
                         ->searchable()
                         ->preload()
-                        ->options(\App\Models\Consultorio::pluck('nombre', 'id'))
+                        ->options(Consultorio::pluck('nombre', 'id'))
                         ->native(false)
                         ->placeholder('Todos'),
                 ])
@@ -170,7 +189,7 @@ class CalendarWidget extends FullCalendarWidget
     protected function getHeading(): string
     {
         if ($this->consultorioFilter) {
-            $nombre = \App\Models\Consultorio::find($this->consultorioFilter)?->nombre ?? 'Consultorio';
+            $nombre = Consultorio::find($this->consultorioFilter)?->nombre ?? 'Consultorio';
             return "Agenda — {$nombre}";
         }
 
@@ -182,15 +201,15 @@ class CalendarWidget extends FullCalendarWidget
     public function getFormSchema(): array
     {
         return [
-            Forms\Components\Select::make('cliente_id')
+            Select::make('cliente_id')
                 ->label('Paciente')
                 ->relationship('cliente', 'nombre')
                 ->searchable()
                 ->preload()
                 ->required(),
 
-            Forms\Components\Actions::make([
-                \Filament\Forms\Components\Actions\Action::make('contactar')
+            \Filament\Schemas\Components\Actions::make([
+                Action::make('contactar')
                     ->label('Contactar por WhatsApp')
                     ->color('success')
                     ->icon('heroicon-o-phone')
@@ -215,7 +234,7 @@ class CalendarWidget extends FullCalendarWidget
                     ->visible(fn($record) => filled($record?->telefono ?? $record?->cliente?->telefono)),
             ])->columnSpanFull()->hiddenLabel(),
 
-            Forms\Components\Select::make('consultorio_id')
+            Select::make('consultorio_id')
                 ->label('Consultorio')
                 ->relationship('consultorio', 'nombre')
                 ->required()
@@ -223,7 +242,7 @@ class CalendarWidget extends FullCalendarWidget
                 ->preload()
                 ->reactive(), // <--- ESTE ES CLAVE
 
-            Forms\Components\Select::make('especialidades')
+            Select::make('especialidades')
                 ->label('Especialidades')
                 ->multiple()
                 ->searchable()
@@ -232,12 +251,12 @@ class CalendarWidget extends FullCalendarWidget
                 ->required()
                 ->reactive(),
 
-            Forms\Components\Select::make('servicios')
+            Select::make('servicios')
                 ->label('Servicios')
                 ->multiple()
                 ->searchable()
                 ->preload()
-                ->options(fn(callable $get) => \App\Models\ServicioEspecialidad::whereIn('especialidad_id', $get('especialidades') ?? [])
+                ->options(fn(callable $get) => ServicioEspecialidad::whereIn('especialidad_id', $get('especialidades') ?? [])
                     ->pluck('nombre', 'id'))
                 ->required()
                 ->reactive()
@@ -248,8 +267,8 @@ class CalendarWidget extends FullCalendarWidget
                     );
                 }),
 
-            Forms\Components\Actions::make([
-                \Filament\Forms\Components\Actions\Action::make('confirmado')
+            \Filament\Schemas\Components\Actions::make([
+                Action::make('confirmado')
                     ->label('Confirmar')
                     ->color('success')
                     ->icon('heroicon-o-check-circle')
@@ -260,17 +279,17 @@ class CalendarWidget extends FullCalendarWidget
                             && $record->estado !== 'Reagendando'
                     )
                     ->action(function ($record) {
-                        app(\App\Services\Agenda\AgendaService::class)->confirmar($record);
+                        app(AgendaService::class)->confirmar($record);
                     }),
 
-                \Filament\Forms\Components\Actions\Action::make('se_presento')
+                Action::make('se_presento')
                     ->label('Se Presentó')
                     ->color('primary')
                     ->icon('heroicon-o-user')
                     ->visible(fn($record) => $record && $record->estado === 'Confirmado')
                     ->modalHeading('Registrar asistencia')
                     ->modalSubmitActionLabel('Guardar y cerrar')
-                    ->form(function ($record) {
+                    ->schema(function ($record) {
                         $servicio = $record->servicios->first();
 
                         // Opciones para checkboxes: id => "fecha — contenido..."
@@ -287,10 +306,10 @@ class CalendarWidget extends FullCalendarWidget
 
                         return [
                             // 🔸 Selección manual de notas no leídas
-                            Forms\Components\Section::make('Notas no leídas')
+                            Section::make('Notas no leídas')
                                 ->description('Selecciona las notas que quieres marcar como leídas')
                                 ->schema([
-                                    Forms\Components\CheckboxList::make('nota_ids_a_marcar')
+                                    CheckboxList::make('nota_ids_a_marcar')
                                         ->options($opcionesNotas)
                                         ->columns(1)
                                         ->bulkToggleable(), // permite seleccionar/deseleccionar todas
@@ -300,12 +319,12 @@ class CalendarWidget extends FullCalendarWidget
                                 ->columnSpanFull(),
 
                             // Datos de la atención (editables)
-                            Forms\Components\TextInput::make('actividad')
+                            TextInput::make('actividad')
                                 ->label('Servicio / Actividad')
                                 ->default($servicio?->nombre ?? 'Servicio no especificado')
                                 ->required(),
 
-                            Forms\Components\TextInput::make('pago')
+                            TextInput::make('pago')
                                 ->label('Pago')
                                 ->numeric()
                                 ->prefix('L')
@@ -313,7 +332,7 @@ class CalendarWidget extends FullCalendarWidget
                                 ->rule('numeric')
                                 ->rule('min:0'),
 
-                            Forms\Components\Textarea::make('nota')
+                            Textarea::make('nota')
                                 ->label('Nueva nota (opcional)')
                                 ->rows(3)
                                 ->maxLength(500),
@@ -362,23 +381,23 @@ class CalendarWidget extends FullCalendarWidget
 
                 //aca iniciamos no se presento
 
-                \Filament\Forms\Components\Actions\Action::make('no_se_presento')
+                Action::make('no_se_presento')
                     ->label('No se presentó')
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->visible(fn($record) => $record?->estado === 'Confirmado')
                     ->action(function ($record) {
                         try {
-                            $nueva = app(\App\Services\Agenda\AgendaService::class)->noSePresento($record);
+                            $nueva = app(AgendaService::class)->noSePresento($record);
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Reagendado')
                                 ->body('El paciente fue reagendado para el ' .
                                     Carbon::parse($nueva->start_at)->locale('es')->translatedFormat('l d \\d\\e F h:i A'))
                                 ->success()
                                 ->send();
-                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
-                            \Filament\Notifications\Notification::make()
+                        } catch (AgendaException $e) {
+                            Notification::make()
                                 ->title('No se pudo reagendar')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -387,22 +406,22 @@ class CalendarWidget extends FullCalendarWidget
                     }),
 
                 //aca iniciamos reagendacion directa
-                \Filament\Forms\Components\Actions\Action::make('reagendar_directo')
+                Action::make('reagendar_directo')
                     ->label('Reagendar (Directo)')
                     ->color('warning')
                     ->icon('heroicon-o-calendar')
                     ->visible(fn($record) => $record && in_array($record->estado, ['Pendiente', 'Reagendado']))
                     ->action(function ($record) {
                         try {
-                            app(\App\Services\Agenda\AgendaService::class)->reagendarAlProximoDisponible($record);
+                            app(AgendaService::class)->reagendarAlProximoDisponible($record);
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Cita reagendada')
                                 ->body('La cita ha sido reagendada automáticamente a la próxima fecha libre (evitando domingos).')
                                 ->success()
                                 ->send();
-                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
-                            \Filament\Notifications\Notification::make()
+                        } catch (AgendaException $e) {
+                            Notification::make()
                                 ->title('No se pudo reagendar')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -411,12 +430,12 @@ class CalendarWidget extends FullCalendarWidget
                     }),
 
 
-                \Filament\Forms\Components\Actions\Action::make('reagendar')
+                Action::make('reagendar')
                     ->label('Intercambiar')
                     ->color('warning')
                     ->icon('heroicon-o-calendar')
-                    ->form([
-                        Forms\Components\Select::make('evento_reemplazo_id')
+                    ->schema([
+                        Select::make('evento_reemplazo_id')
                             ->label('Paciente alternativo')
                             ->searchable()
                             ->required()
@@ -429,7 +448,7 @@ class CalendarWidget extends FullCalendarWidget
                                 $horaIni = $h->copy()->startOfHour()->format('H:i:s'); // ej. 08:00:00
                                 $horaFin = $h->copy()->endOfHour()->format('H:i:s');   // ej. 08:59:59
 
-                                return \App\Models\Event::query()
+                                return Event::query()
                                     ->where('id', '!=', $record->id)
                                     ->where('estado', 'Pendiente')
                                     ->whereBetween('start_at', [$inicio, $fin])           // próximos 5 días
@@ -447,16 +466,16 @@ class CalendarWidget extends FullCalendarWidget
                     ])
                     ->action(function ($data, $record) {
                         try {
-                            app(\App\Services\Agenda\AgendaService::class)
+                            app(AgendaService::class)
                                 ->solicitarIntercambio($record, (int) $data['evento_reemplazo_id']);
 
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Solicitud enviada')
                                 ->body('Se ha solicitado el cambio. Ambos pacientes están en estado "Reagendando".')
                                 ->success()
                                 ->send();
-                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
-                            \Filament\Notifications\Notification::make()
+                        } catch (AgendaException $e) {
+                            Notification::make()
                                 ->title('No se pudo solicitar el intercambio')
                                 ->body($e->getMessage())
                                 ->danger()
@@ -466,13 +485,13 @@ class CalendarWidget extends FullCalendarWidget
                     ->visible(fn($record) => $record?->estado === 'Pendiente'),
 
 
-                \Filament\Forms\Components\Actions\Action::make('asignar_cancelado_a_este_horario')
+                Action::make('asignar_cancelado_a_este_horario')
                     ->label('Asignar cancelado a este horario')
                     ->color('secondary')
                     ->icon('heroicon-o-arrow-path')
                     ->visible(fn($record) => $record && in_array($record->estado, ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando']))
-                    ->form([
-                        Forms\Components\Select::make('cancelado_id')
+                    ->schema([
+                        Select::make('cancelado_id')
                             ->label('Selecciona una cita cancelada')
                             ->searchable()
                             ->required()
@@ -491,7 +510,7 @@ class CalendarWidget extends FullCalendarWidget
                     ])
                     ->action(function (array $data, $record) {
                         try {
-                            app(\App\Services\Agenda\AgendaService::class)
+                            app(AgendaService::class)
                                 ->asignarCanceladaAlHorario($record, (int) $data['cancelado_id']);
 
                             Notification::make()
@@ -501,7 +520,7 @@ class CalendarWidget extends FullCalendarWidget
                                 ->send();
 
                             $this->dispatch('refreshCalendar');
-                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                        } catch (AgendaException $e) {
                             Notification::make()
                                 ->title('No disponible')
                                 ->body($e->getMessage())
@@ -510,7 +529,7 @@ class CalendarWidget extends FullCalendarWidget
                         }
                     }),
 
-                \Filament\Forms\Components\Actions\Action::make('cancelar_cita')   // ⬅️ NUEVO
+                Action::make('cancelar_cita')   // ⬅️ NUEVO
                     ->label('Cita cancelada')
                     ->color('danger')
                     ->icon('heroicon-o-no-symbol')
@@ -520,9 +539,9 @@ class CalendarWidget extends FullCalendarWidget
                         $record && in_array($record->estado, ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando'])
                     )
                     ->action(function ($record) {
-                        app(\App\Services\Agenda\AgendaService::class)->cancelar($record);
+                        app(AgendaService::class)->cancelar($record);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Cita cancelada')
                             ->body('La cita fue marcada como Cancelada.')
                             ->warning()
@@ -556,18 +575,18 @@ class CalendarWidget extends FullCalendarWidget
     protected function getCreateFormSchema(): array
     {
         return [
-            Forms\Components\Grid::make([
+            Grid::make([
                 'default' => 1,   // 1 columna en pantallas pequeñas
                 'md'      => 2,   // 2 columnas desde md en adelante
             ])->schema([
 
-                Forms\Components\Select::make('cancelado_evento_id')
+                Select::make('cancelado_evento_id')
                     ->label('Citas canceladas')
                     ->searchable()
                     ->preload()
                     ->reactive() // <-- importante para recalcular el helperText al seleccionar
                     ->options(function () {
-                        return \App\Models\Event::query()
+                        return Event::query()
                             ->with([
                                 'cliente:id,nombre',
                                 'consultorio:id,nombre',
@@ -579,7 +598,7 @@ class CalendarWidget extends FullCalendarWidget
                             ->get()
                             ->mapWithKeys(function ($e) {
                                 $nombreCliente = $e->cliente->nombre ?? 'Sin nombre';
-                                $fechaStr = \Illuminate\Support\Carbon::parse($e->start_at)
+                                $fechaStr = Carbon::parse($e->start_at)
                                     ->locale('es')
                                     ->isoFormat('ddd D/MM, h:mm a'); // ej. "vie 12/09, 8:30 a. m."
 
@@ -593,18 +612,18 @@ class CalendarWidget extends FullCalendarWidget
                     }),
 
                 // Botones: elegir una sugerencia y autocompletar fecha/hora (y consultorio)
-                Forms\Components\ToggleButtons::make('sugerencia_btn')
+                ToggleButtons::make('sugerencia_btn')
                     ->label('Elegir sugerencia')
                     ->helperText('Pulsa un botón para colocar automáticamente la fecha y la hora.')
                     ->inline()
                     ->multiple(false)
                     ->reactive()
-                    ->options(function (\Filament\Forms\Get $get) {
+                    ->options(function (Get $get) {
                         $evId = $get('cancelado_evento_id');
                         if (!$evId) return [];
 
-                        /** @var \App\Models\Event|null $ev */
-                        $ev = \App\Models\Event::find($evId);
+                        /** @var Event|null $ev */
+                        $ev = Event::find($evId);
                         if (!$ev) return [];
 
                         // ✅ Consultorio a usar: primero el del formulario, si no, el de la cancelada
@@ -612,7 +631,7 @@ class CalendarWidget extends FullCalendarWidget
                         if (!$consultorioId) return [];
 
                         // Hora preferida (HH:mm) tomada de la cancelada
-                        $horaPref = \Illuminate\Support\Carbon::parse($ev->start_at)->format('H:i');
+                        $horaPref = Carbon::parse($ev->start_at)->format('H:i');
 
                         $sugs    = [];
                         $dia     = now()->startOfDay()->copy();
@@ -627,7 +646,7 @@ class CalendarWidget extends FullCalendarWidget
 
                             // Opciones disponibles del consultorio para ese día
                             // Debe devolver ['HH:mm' => '08:00 a. m.', ...] solo para $consultorioId
-                            $opc = \App\Helpers\HorarioHelper::opcionesDisponibles($consultorioId, $fecha);
+                            $opc = HorarioHelper::opcionesDisponibles($consultorioId, $fecha);
                             if (empty($opc)) continue;
 
                             // ✅ Solo sugerimos si la misma hora (horaPref) está libre ese día
@@ -643,7 +662,7 @@ class CalendarWidget extends FullCalendarWidget
                     })
 
 
-                    ->afterStateUpdated(function ($state, \Filament\Forms\Set $set, \Filament\Forms\Get $get) {
+                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
                         if (! $state) return;
 
                         try {
@@ -656,17 +675,17 @@ class CalendarWidget extends FullCalendarWidget
 
                             // 2) Hora de finalización (+30 min)
                             try {
-                                $h = \Illuminate\Support\Carbon::createFromFormat('H:i', $t);
+                                $h = Carbon::createFromFormat('H:i', $t);
                                 $set('end_time', $h->copy()->addMinutes(30)->format('H:i'));
-                            } catch (\Throwable $e) {
+                            } catch (Throwable $e) {
                                 // no-op
                             }
 
                             // 3) Datos del evento cancelado (cliente, teléfono, especialidades, servicios, doctor)
                             $evId = $get('cancelado_evento_id');
                             if ($evId) {
-                                /** @var \App\Models\Event|null $ev */
-                                $ev = \App\Models\Event::with([
+                                /** @var Event|null $ev */
+                                $ev = Event::with([
                                     'cliente:id,telefono',
                                     'especialidades:id',
                                     'servicios:id',
@@ -702,39 +721,39 @@ class CalendarWidget extends FullCalendarWidget
                                     $set('autofill_cancelado', null);
                                 }
                             }
-                        } catch (\Throwable $e) {
+                        } catch (Throwable $e) {
                             // no-op
                         }
                     })
 
 
-                    ->hidden(fn(\Filament\Forms\Get $get) => ! $get('cancelado_evento_id')), // solo visible si hay cancelada
-                Forms\Components\TextInput::make('autofill_cancelado')
+                    ->hidden(fn(Get $get) => ! $get('cancelado_evento_id')), // solo visible si hay cancelada
+                TextInput::make('autofill_cancelado')
                     ->hidden()
                     ->dehydrated(false),
 
                 // Fila 1
-                Forms\Components\Select::make('cliente_id')
+                Select::make('cliente_id')
                     ->label('Cliente')
                     ->searchable()
                     ->required()
                     ->getSearchResultsUsing(
                         fn(string $search) =>
-                        \App\Models\Cliente::query()
+                        Cliente::query()
                             ->where('nombre', 'like', "%{$search}%")
                             ->orWhere('dni', 'like', "%{$search}%")
                             ->limit(5)
                             ->pluck('nombre', 'id')
                     )
-                    ->getOptionLabelUsing(fn($value) => \App\Models\Cliente::find($value)?->nombre)
+                    ->getOptionLabelUsing(fn($value) => Cliente::find($value)?->nombre)
                     ->reactive()
-                    ->afterStateUpdated(function ($state, Forms\Set $set) {
-                        if ($state && ($cli = \App\Models\Cliente::find($state))) {
+                    ->afterStateUpdated(function ($state, Set $set) {
+                        if ($state && ($cli = Cliente::find($state))) {
                             $set('telefono', $cli->telefono);
                         }
                     })
                     ->rule(function () {
-                        return function (string $attribute, $value, \Closure $fail) {
+                        return function (string $attribute, $value, Closure $fail) {
                             if (! $value) return;
 
                             // si estás editando, excluye tu propio evento
@@ -746,7 +765,7 @@ class CalendarWidget extends FullCalendarWidget
                             $inicio = now()->startOfDay();
                             $fin    = now()->addDays(25)->endOfDay();
 
-                            $existe = \App\Models\Event::query()
+                            $existe = Event::query()
                                 ->where('cliente_id', $value)
                                 ->whereIn('estado', $estados)
                                 ->whereBetween('start_at', [$inicio, $fin])
@@ -755,54 +774,54 @@ class CalendarWidget extends FullCalendarWidget
                                 ->first();
 
                             if ($existe) {
-                                $fecha = \Illuminate\Support\Carbon::parse($existe->start_at)->format('d/m/Y h:i A');
+                                $fecha = Carbon::parse($existe->start_at)->format('d/m/Y h:i A');
                                 $fail("Este cliente ya tiene una cita {$existe->estado} el {$fecha}. No puede agendar otra como minimo dentro de 25 días.");
                             }
                         };
                     }),
 
 
-                Forms\Components\TextInput::make('telefono')
+                TextInput::make('telefono')
                     ->label('Teléfono')
                     ->tel()
                     ->disabled()
                     ->dehydrated(true),
 
                 // Fila 2
-                Forms\Components\Select::make('especialidades')
+                Select::make('especialidades')
                     ->label('Especialidades')
                     ->multiple()
                     ->searchable()
                     ->preload()
-                    ->options(\App\Models\Especialidad::pluck('nombre', 'id'))
+                    ->options(Especialidad::pluck('nombre', 'id'))
                     ->required()
                     ->reactive()
-                    ->afterStateUpdated(fn(Forms\Set $set) => $set('servicios', [])),
+                    ->afterStateUpdated(fn(Set $set) => $set('servicios', [])),
 
-                Forms\Components\Select::make('servicios')
+                Select::make('servicios')
                     ->label('Servicios')
                     ->multiple()
                     ->searchable()
                     ->preload()
                     ->required()
                     ->reactive()
-                    ->disabled(fn(Forms\Get $get) => empty($get('especialidades')))
+                    ->disabled(fn(Get $get) => empty($get('especialidades')))
                     ->relationship(
                         name: 'servicios',
                         titleAttribute: 'nombre',
-                        modifyQueryUsing: fn($query, Forms\Get $get) =>
+                        modifyQueryUsing: fn($query, Get $get) =>
                         $query->whereIn('especialidad_id', $get('especialidades') ?: [-1])
                     ),
 
                 // Fila 3
-                Forms\Components\Select::make('consultorio_id')
+                Select::make('consultorio_id')
                     ->label('Consultorio')
-                    ->options(\App\Models\Consultorio::pluck('nombre', 'id'))
+                    ->options(Consultorio::pluck('nombre', 'id'))
                     ->searchable()
                     ->required()
                     ->reactive(),
 
-                Forms\Components\Select::make('doctor_id')
+                Select::make('doctor_id')
                     ->label('Doctor')
                     ->relationship(
                         name: 'doctor',                      // relación en Event: doctor()
@@ -814,25 +833,25 @@ class CalendarWidget extends FullCalendarWidget
                     ->nullable() // ✅ el doctor es opcional (doctor_id NULL si no se selecciona)
                     ->default(function () {
                         $u = Auth::user();
-                        return ($u instanceof \App\Models\User && $u->hasRole('doctor'))
+                        return ($u instanceof User && $u->hasRole('doctor'))
                             ? $u->id
                             : null;
                     })
                     ->disabled(function () {
                         // Si el usuario autenticado es doctor, se autoselecciona y no puede cambiarlo
                         $u = Auth::user();
-                        return $u instanceof \App\Models\User && $u->hasRole('doctor');
+                        return $u instanceof User && $u->hasRole('doctor');
                     }),
 
-                Forms\Components\DatePicker::make('start_date')
+                DatePicker::make('start_date')
                     ->label('Fecha')
                     ->required()
                     ->reactive()
                     ->native(false)
-                    ->minDate(\Illuminate\Support\Carbon::today())
-                    ->rule(function (\Filament\Forms\Get $get) {
+                    ->minDate(Carbon::today())
+                    ->rule(function (Get $get) {
                         return function (string $attribute, $value, $fail) use ($get) {
-                            $fecha = \Illuminate\Support\Carbon::parse($value);
+                            $fecha = Carbon::parse($value);
 
                             // No domingos
                             if ($fecha->isSunday()) {
@@ -843,9 +862,9 @@ class CalendarWidget extends FullCalendarWidget
                             // Si hay una cancelada seleccionada: exigir fecha estrictamente posterior
                             $evId = $get('cancelado_evento_id');
                             if ($evId) {
-                                $ev = \App\Models\Event::find($evId);
+                                $ev = Event::find($evId);
                                 if ($ev && $ev->start_at) {
-                                    $fechaCancelada = \Illuminate\Support\Carbon::parse($ev->start_at)->toDateString();
+                                    $fechaCancelada = Carbon::parse($ev->start_at)->toDateString();
                                     if ($fecha->toDateString() <= $fechaCancelada) {
                                         $fail('La fecha debe ser estrictamente posterior a la fecha de la cita cancelada.');
                                     }
@@ -855,7 +874,7 @@ class CalendarWidget extends FullCalendarWidget
                     }),
 
                 // Fila 4
-                Forms\Components\Select::make('start_time')
+                Select::make('start_time')
                     ->label('Hora disponible')
                     ->required()
                     ->options(fn(Get $get) => HorarioHelper::opcionesDisponibles(
@@ -871,11 +890,11 @@ class CalendarWidget extends FullCalendarWidget
                         }
 
                         // Si usas únicamente start_time / end_time en el Widget:
-                        $h = \Illuminate\Support\Carbon::createFromFormat('H:i', $state);
+                        $h = Carbon::createFromFormat('H:i', $state);
                         $set('end_time', $h->copy()->addMinutes(30)->format('H:i'));
                     }),
 
-                Forms\Components\TimePicker::make('end_time')
+                TimePicker::make('end_time')
                     ->label('Hora de finalización')
                     ->required()
                     ->disabled()

@@ -2,58 +2,74 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use App\Models\Cliente;
+use Closure;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Forms\Components\DatePicker;
+use DateTimeInterface;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Hidden;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\EventResource\Pages\ListEvents;
+use App\Filament\Resources\EventResource\Pages\CreateEvent;
+use App\Filament\Resources\EventResource\Pages\EditEvent;
 use App\Filament\Resources\EventResource\Pages;
 use App\Models\Event;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Helpers\HorarioHelper;
 use Illuminate\Support\Carbon;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use App\Models\User;
 use App\Models\ServicioEspecialidad;
 
 
-class EventResource extends \Filament\Resources\Resource
+class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-calendar';
     protected static ?string $navigationLabel = 'Eventos';
-    protected static ?string $navigationGroup = 'Gestión de Calendario';
+    protected static string | \UnitEnum | null $navigationGroup = 'Gestión de Calendario';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Select::make('cliente_id')
+        return $schema->components([
+            Select::make('cliente_id')
                 ->label('Cliente')
                 ->searchable()
-                ->getSearchResultsUsing(fn(string $search) => \App\Models\Cliente::query()
+                ->getSearchResultsUsing(fn(string $search) => Cliente::query()
                     ->where('nombre', 'like', "%{$search}%")
                     ->orWhere('dni', 'like', "%{$search}%")
                     ->limit(5)
                     ->pluck('nombre', 'id'))
-                ->getOptionLabelUsing(fn($value): ?string => \App\Models\Cliente::find($value)?->nombre)
+                ->getOptionLabelUsing(fn($value): ?string => Cliente::find($value)?->nombre)
                 ->required()
                 ->reactive()
                 ->afterStateUpdated(function ($state, callable $set) {
-                    if ($state && ($c = \App\Models\Cliente::find($state))) {
+                    if ($state && ($c = Cliente::find($state))) {
                         $set('telefono', $c->telefono);
                     }
                 })
                 ->rule(function () {
-                    return function (string $attribute, $value, \Closure $fail) {
+                    return function (string $attribute, $value, Closure $fail) {
 
                         if (! $value) return;
 
                         // Si estás en /events/{record}/edit, este es el id del propio evento
                         $currentEventId = request()->route('record');
 
-                        $proximo = \App\Models\Event::query()
+                        $proximo = Event::query()
                             ->where('cliente_id', $value)
                             ->where('estado', 'Pendiente')
                             ->whereBetween('start_at', [now(), now()->addDays(25)])
@@ -62,21 +78,21 @@ class EventResource extends \Filament\Resources\Resource
                             ->first();
 
                         if ($proximo) {
-                            $fecha = \Illuminate\Support\Carbon::parse($proximo->start_at)->format('d/m/Y h:i A');
+                            $fecha = Carbon::parse($proximo->start_at)->format('d/m/Y h:i A');
                             $fail("Este cliente ya tiene una cita pendiente el {$fecha}.");
                         }
                     };
                 }),
 
 
-            Forms\Components\Select::make('consultorio_id')
+            Select::make('consultorio_id')
                 ->label('Consultorio')
                 ->relationship('consultorio', 'nombre')
                 ->searchable()
                 ->preload()
                 ->required()
                 ->reactive()
-                ->afterStateUpdated(function (Forms\Get $get, Forms\Set $set) {
+                ->afterStateUpdated(function (Get $get, Set $set) {
                     $set('start_date', null);
                     $set('start_time', null);
                     $set('start_at',   null);
@@ -85,7 +101,7 @@ class EventResource extends \Filament\Resources\Resource
 
 
 
-            Forms\Components\Select::make('doctor_id')
+            Select::make('doctor_id')
                 ->label('Doctor')
                 ->relationship(
                     name: 'doctor',                      // relación en Event: doctor()
@@ -103,47 +119,47 @@ class EventResource extends \Filament\Resources\Resource
                 ->nullable(), // 👈 ahora el campo puede quedar vacío
 
             // FECHA
-            Forms\Components\DatePicker::make('start_date')
+            DatePicker::make('start_date')
                 ->label('Fecha')
                 ->native(false)
                 ->minDate(now()->toDateString())
                 ->required()
                 ->reactive()
                 ->dehydrated(false) // no va a BD
-                ->disabled(fn(Forms\Get $get) => ! $get('consultorio_id'))
-                ->afterStateHydrated(function (Forms\Set $set, ?\App\Models\Event $record) {
+                ->disabled(fn(Get $get) => ! $get('consultorio_id'))
+                ->afterStateHydrated(function (Set $set, ?Event $record) {
                     if ($record?->start_at) {
-                        $date = $record->start_at instanceof \DateTimeInterface
-                            ? \Illuminate\Support\Carbon::parse($record->start_at)->toDateString()
-                            : \Illuminate\Support\Carbon::parse((string) $record->start_at)->toDateString();
+                        $date = $record->start_at instanceof DateTimeInterface
+                            ? Carbon::parse($record->start_at)->toDateString()
+                            : Carbon::parse((string) $record->start_at)->toDateString();
 
                         $set('start_date', $date);
                     }
                 })
-                ->afterStateUpdated(function (Forms\Set $set) {
+                ->afterStateUpdated(function (Set $set) {
                     $set('start_time', null);
                     $set('start_at',   null);
                     $set('end_at',     null);
                 }),
 
             // HORA DISPONIBLE
-            Forms\Components\Select::make('start_time')
+            Select::make('start_time')
                 ->label('Hora disponible')
                 ->native(false)
                 ->searchable(false)
                 ->required()
                 ->dehydrated(false) // no va a BD
-                ->options(function (Forms\Get $get, ?\App\Models\Event $record) {
-                    $opts = \App\Helpers\HorarioHelper::opcionesDisponibles(
+                ->options(function (Get $get, ?Event $record) {
+                    $opts = HorarioHelper::opcionesDisponibles(
                         $get('consultorio_id'),
                         $get('start_date'),
                     );
 
                     // Inyecta la hora actual del evento si no aparece en las opciones
                     if ($record?->start_at) {
-                        $start = $record->start_at instanceof \DateTimeInterface
-                            ? \Illuminate\Support\Carbon::parse($record->start_at)
-                            : \Illuminate\Support\Carbon::parse((string) $record->start_at);
+                        $start = $record->start_at instanceof DateTimeInterface
+                            ? Carbon::parse($record->start_at)
+                            : Carbon::parse((string) $record->start_at);
 
                         $key   = $start->format('H:i');   // "08:00"
                         $label = $start->format('g:i A'); // "8:00 AM"
@@ -155,34 +171,34 @@ class EventResource extends \Filament\Resources\Resource
 
                     return $opts;
                 })
-                ->disabled(fn(Forms\Get $get) => ! $get('consultorio_id') || ! $get('start_date'))
-                ->afterStateHydrated(function (Forms\Set $set, ?\App\Models\Event $record) {
+                ->disabled(fn(Get $get) => ! $get('consultorio_id') || ! $get('start_date'))
+                ->afterStateHydrated(function (Set $set, ?Event $record) {
                     if ($record?->start_at) {
-                        $start = $record->start_at instanceof \DateTimeInterface
-                            ? \Illuminate\Support\Carbon::parse($record->start_at)
-                            : \Illuminate\Support\Carbon::parse((string) $record->start_at);
+                        $start = $record->start_at instanceof DateTimeInterface
+                            ? Carbon::parse($record->start_at)
+                            : Carbon::parse((string) $record->start_at);
 
                         $set('start_time', $start->format('H:i'));                 // clave del select
                         $set('start_at',   $start->toDateTimeString());            // hidden
                     }
 
                     if ($record?->end_at) {
-                        $end = $record->end_at instanceof \DateTimeInterface
-                            ? \Illuminate\Support\Carbon::parse($record->end_at)
-                            : \Illuminate\Support\Carbon::parse((string) $record->end_at);
+                        $end = $record->end_at instanceof DateTimeInterface
+                            ? Carbon::parse($record->end_at)
+                            : Carbon::parse((string) $record->end_at);
 
                         $set('end_at', $end->toDateTimeString());                 // hidden
                     }
                 })
                 ->reactive()
-                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                ->afterStateUpdated(function ($state, Set $set, Get $get) {
                     if (! $state || ! $get('consultorio_id') || ! $get('start_date')) {
                         $set('start_at', null);
                         $set('end_at',   null);
                         return;
                     }
 
-                    [$start, $end] = \App\Helpers\HorarioHelper::calcularRango(
+                    [$start, $end] = HorarioHelper::calcularRango(
                         (int) $get('consultorio_id'),
                         (string) $get('start_date'),
                         (string) $state
@@ -193,13 +209,13 @@ class EventResource extends \Filament\Resources\Resource
                 }),
 
 
-            Forms\Components\TextInput::make('telefono')
+            TextInput::make('telefono')
                 ->label('Teléfono')
                 ->tel()
                 ->disabled()
                 ->maxLength(25),
 
-            Forms\Components\Select::make('estado')
+            Select::make('estado')
                 ->label('Estado')
                 ->options([
                     'Pendiente'   => 'Pendiente',
@@ -214,7 +230,7 @@ class EventResource extends \Filament\Resources\Resource
                 ->visibleOn('edit'),   // Visible en Edit
 
 
-            Forms\Components\Select::make('especialidades')
+            Select::make('especialidades')
                 ->label('Especialidades')
                 ->relationship('especialidades', 'nombre')   // relación en tu modelo (belongsToMany)
                 ->multiple()
@@ -225,7 +241,7 @@ class EventResource extends \Filament\Resources\Resource
                 ->afterStateUpdated(fn(Set $set) => $set('servicios', [])),
 
             // Servicios (muchos a muchos con tu modelo, pero cada Servicio pertenece a 1 Especialidad)
-            Forms\Components\Select::make('servicios')
+            Select::make('servicios')
                 ->label('Servicios')
                 ->relationship(
                     name: 'servicios',                       // relación belongsToMany en tu modelo (ej. Event::class)
@@ -244,10 +260,10 @@ class EventResource extends \Filament\Resources\Resource
                 ->disabled(fn(Get $get) => empty($get('especialidades'))),
 
             // Estos sí van a BD
-            Forms\Components\Hidden::make('start_at')->required(),
-            Forms\Components\Hidden::make('end_at')->required(),
-            Forms\Components\Hidden::make('created_by')->default(fn() => Auth::id()),
-            Forms\Components\Hidden::make('updated_by')->default(fn() => Auth::id()),
+            Hidden::make('start_at')->required(),
+            Hidden::make('end_at')->required(),
+            Hidden::make('created_by')->default(fn() => Auth::id()),
+            Hidden::make('updated_by')->default(fn() => Auth::id()),
         ])->columns(2);
     }
 
@@ -256,26 +272,26 @@ class EventResource extends \Filament\Resources\Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('cliente.nombre')
+                TextColumn::make('cliente.nombre')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('consultorio.nombre')
+                TextColumn::make('consultorio.nombre')
                     ->label('Consultorio')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('start_at')
+                TextColumn::make('start_at')
                     ->label('Inicio')
                     ->dateTime('d/m/Y h:i A')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('end_at')
+                TextColumn::make('end_at')
                     ->label('Fin')
                     ->dateTime('d/m/Y h:i A')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('estado')
+                TextColumn::make('estado')
                     ->badge()
                     ->colors([
                         'secondary' => 'Pendiente',
@@ -286,23 +302,23 @@ class EventResource extends \Filament\Resources\Resource
                     ])
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime('d/m/Y h:i A')
                     ->sortable(),
             ])
             ->filters([])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()
-                    ->mutateFormDataUsing(function (array $data) {
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make()
+                    ->mutateDataUsing(function (array $data) {
                         $data['updated_by'] = Auth::id();
                         return $data;
                     }),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 
@@ -317,9 +333,9 @@ class EventResource extends \Filament\Resources\Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListEvents::route('/'),
-            'create' => Pages\CreateEvent::route('/create'),
-            'edit'   => Pages\EditEvent::route('/{record}/edit'),
+            'index'  => ListEvents::route('/'),
+            'create' => CreateEvent::route('/create'),
+            'edit'   => EditEvent::route('/{record}/edit'),
         ];
     }
 }

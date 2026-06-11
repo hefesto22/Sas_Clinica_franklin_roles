@@ -2,10 +2,30 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\ClienteResource\RelationManagers\ClienteActividadesRelationManager;
+use App\Filament\Resources\ClienteResource\RelationManagers\ClienteImagenesRelationManager;
+use App\Filament\Resources\ClienteResource\RelationManagers\ClienteNotasRelationManager;
+use App\Filament\Resources\ClienteResource\RelationManagers\EvaluacionesRelationManager;
+use App\Filament\Resources\ClienteResource\Pages\ListClientes;
+use App\Filament\Resources\ClienteResource\Pages\CreateCliente;
+use App\Filament\Resources\ClienteResource\Pages\EditCliente;
 use App\Filament\Resources\ClienteResource\Pages;
 use App\Models\Cliente;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,47 +34,47 @@ class ClienteResource extends Resource
 {
     protected static ?string $model = Cliente::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Pacientes';
     protected static ?string $pluralModelLabel = 'Pacientes';
     protected static ?string $modelLabel = 'Cliente';
-    protected static ?string $navigationGroup = 'Gestión de Pacientes';
+    protected static string | \UnitEnum | null $navigationGroup = 'Gestión de Pacientes';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\Section::make('Datos personales')->schema([
-                Forms\Components\Grid::make(12)->schema([
-                    Forms\Components\TextInput::make('nombre')
+        return $schema->components([
+            Section::make('Datos personales')->schema([
+                Grid::make(12)->schema([
+                    TextInput::make('nombre')
                         ->label('Nombre completo')
                         ->required()
                         ->maxLength(255)
                         ->columnSpan(6),
 
-                    Forms\Components\TextInput::make('dni')
+                    TextInput::make('dni')
                         ->label('DNI')
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->maxLength(50)
                         ->columnSpan(3),
 
-                    Forms\Components\TextInput::make('telefono')
+                    TextInput::make('telefono')
                         ->label('Teléfono')
                         ->maxLength(30)
                         ->tel()
                         ->columnSpan(3),
 
-                    Forms\Components\TextInput::make('direccion')
+                    TextInput::make('direccion')
                         ->label('Dirección')
                         ->maxLength(255)
                         ->columnSpan(6),
 
-                    Forms\Components\TextInput::make('ocupacion')
+                    TextInput::make('ocupacion')
                         ->label('Ocupación')
                         ->maxLength(100)
                         ->columnSpan(3),
 
-                    Forms\Components\DatePicker::make('fecha_nacimiento')
+                    DatePicker::make('fecha_nacimiento')
                         ->label('Fecha de nacimiento')
                         ->native(false)
                         ->closeOnDateSelection()
@@ -62,13 +82,13 @@ class ClienteResource extends Resource
                 ]),
             ])->collapsible(),
 
-            Forms\Components\Section::make('Contacto de emergencia')->schema([
-                Forms\Components\Grid::make(12)->schema([
-                    Forms\Components\TextInput::make('contacto_emergencia_nombre')
+            Section::make('Contacto de emergencia')->schema([
+                Grid::make(12)->schema([
+                    TextInput::make('contacto_emergencia_nombre')
                         ->label('Nombre')
                         ->maxLength(255)
                         ->columnSpan(6),
-                    Forms\Components\TextInput::make('contacto_emergencia_telefono')
+                    TextInput::make('contacto_emergencia_telefono')
                         ->label('Teléfono')
                         ->tel()
                         ->maxLength(30)
@@ -76,19 +96,19 @@ class ClienteResource extends Resource
                 ]),
             ])->collapsible(),
 
-            Forms\Components\Section::make('Datos clínicos rápidos')->schema([
-                Forms\Components\Textarea::make('motivo_consulta')
+            Section::make('Datos clínicos rápidos')->schema([
+                Textarea::make('motivo_consulta')
                     ->label('Motivo de consulta')
                     ->rows(3),
-                Forms\Components\Textarea::make('alergias')
+                Textarea::make('alergias')
                     ->label('Alergias')
                     ->rows(3),
             ])->collapsible(),
 
             // ClienteResource.php (form)
-            Forms\Components\Section::make('Estado')
+            Section::make('Estado')
                 ->schema([
-                    Forms\Components\Select::make('estado')
+                    Select::make('estado')
                         ->label('Estado')
                         ->required()
                         ->options([
@@ -108,53 +128,53 @@ class ClienteResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nombre')
+                TextColumn::make('nombre')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('dni')
+                TextColumn::make('dni')
                     ->label('DNI')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('telefono')
+                TextColumn::make('telefono')
                     ->label('Teléfono')
                     ->toggleable()
                     ->placeholder('-'),
 
-                Tables\Columns\TextColumn::make('estado')
+                TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
                     ->sortable()
                     ->color(fn(string $state) => $state === 'activo' ? 'success' : 'gray'),
 
-                Tables\Columns\TextColumn::make('creador.name')
+                TextColumn::make('creador.name')
                     ->label('Creado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime('Y-m-d H:i')
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('estado')
+                SelectFilter::make('estado')
                     ->options([
                         'activo' => 'Activo',
                         'inactivo' => 'Inactivo',
                     ]),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -162,19 +182,19 @@ class ClienteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\ClienteResource\RelationManagers\ClienteActividadesRelationManager::class,
-            \App\Filament\Resources\ClienteResource\RelationManagers\ClienteImagenesRelationManager::class,
-            \App\Filament\Resources\ClienteResource\RelationManagers\ClienteNotasRelationManager::class,
-            \App\Filament\Resources\ClienteResource\RelationManagers\EvaluacionesRelationManager::class,
+            ClienteActividadesRelationManager::class,
+            ClienteImagenesRelationManager::class,
+            ClienteNotasRelationManager::class,
+            EvaluacionesRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListClientes::route('/'),
-            'create' => Pages\CreateCliente::route('/create'),
-            'edit'   => Pages\EditCliente::route('/{record}/edit'),
+            'index'  => ListClientes::route('/'),
+            'create' => CreateCliente::route('/create'),
+            'edit'   => EditCliente::route('/{record}/edit'),
         ];
     }
 }

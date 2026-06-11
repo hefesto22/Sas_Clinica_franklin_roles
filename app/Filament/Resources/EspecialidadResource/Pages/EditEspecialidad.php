@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EspecialidadResource\Pages;
 
+use Filament\Actions\DeleteAction;
 use App\Filament\Resources\EspecialidadResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -14,7 +15,7 @@ class EditEspecialidad extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
     protected function mutateFormDataBeforeSave(array $data): array

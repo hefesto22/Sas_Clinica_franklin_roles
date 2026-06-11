@@ -2,10 +2,24 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Hidden;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\EspecialidadResource\RelationManagers\ServicioEspecialidadRelationManager;
+use App\Filament\Resources\EspecialidadResource\Pages\ListEspecialidads;
+use App\Filament\Resources\EspecialidadResource\Pages\CreateEspecialidad;
+use App\Filament\Resources\EspecialidadResource\Pages\EditEspecialidad;
 use App\Filament\Resources\EspecialidadResource\Pages;
 use App\Models\Especialidad;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,24 +29,24 @@ class EspecialidadResource extends Resource
 {
     protected static ?string $model = Especialidad::class;
 
-    protected static ?string $navigationIcon  = 'heroicon-o-briefcase';
+    protected static string | \BackedEnum | null $navigationIcon  = 'heroicon-o-briefcase';
     protected static ?string $navigationLabel = 'Especialidades';
-    protected static ?string $navigationGroup = 'Gestión Clínica';
+    protected static string | \UnitEnum | null $navigationGroup = 'Gestión Clínica';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\TextInput::make('nombre')
+        return $schema->components([
+            TextInput::make('nombre')
                 ->label('Nombre')
                 ->required()
                 ->maxLength(255),
 
-            Forms\Components\Textarea::make('descripcion')
+            Textarea::make('descripcion')
                 ->label('Descripción')
                 ->rows(3)
                 ->nullable(),
 
-            Forms\Components\Hidden::make('estado')
+            Hidden::make('estado')
                 ->default('activo')
                 ->disabledOn('edit'),
 
@@ -43,17 +57,17 @@ class EspecialidadResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nombre')
+                TextColumn::make('nombre')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('descripcion')
+                TextColumn::make('descripcion')
                     ->label('Descripción')
                     ->limit(60)
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('estado')
+                TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
                     ->color(fn(string $state) => match ($state) {
@@ -63,29 +77,29 @@ class EspecialidadResource extends Resource
                     })
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('creador.name')
+                TextColumn::make('creador.name')
                     ->label('Creado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('editor.name')
+                TextColumn::make('editor.name')
                     ->label('Editado por')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Registrado')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Actualizado')
                     ->since() // muestra "hace X"
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('estado')
+                SelectFilter::make('estado')
                     ->label('Estado')
                     ->options([
                         'activo' => 'Activo',
@@ -93,14 +107,14 @@ class EspecialidadResource extends Resource
                     ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -108,7 +122,7 @@ class EspecialidadResource extends Resource
     public static function getRelations(): array
     {
         return [
-            \App\Filament\Resources\EspecialidadResource\RelationManagers\ServicioEspecialidadRelationManager::class,
+            ServicioEspecialidadRelationManager::class,
         ];
     }
 
@@ -116,9 +130,9 @@ class EspecialidadResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListEspecialidads::route('/'),
-            'create' => Pages\CreateEspecialidad::route('/create'),
-            'edit'   => Pages\EditEspecialidad::route('/{record}/edit'),
+            'index'  => ListEspecialidads::route('/'),
+            'create' => CreateEspecialidad::route('/create'),
+            'edit'   => EditEspecialidad::route('/{record}/edit'),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClienteResource\Pages;
 
+use Filament\Actions\DeleteAction;
 use App\Filament\Resources\ClienteResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -14,7 +15,7 @@ class EditCliente extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
     protected function mutateFormDataBeforeSave(array $data): array
