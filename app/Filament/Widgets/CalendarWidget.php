@@ -56,6 +56,29 @@ class CalendarWidget extends FullCalendarWidget
         'consultorioFilter' => 'integer',
     ];
 
+    /**
+     * Configuración de FullCalendar.
+     * dayMaxEvents colapsa los días cargados a unas pocas citas + "+N más",
+     * que al hacer clic muestra el detalle completo del día.
+     */
+    public function config(): array
+    {
+        return [
+            'locale'        => 'es',
+            'firstDay'      => 1, // semana inicia lunes
+            'dayMaxEvents'  => 4, // máx. citas visibles por día en vista mes
+            'navLinks'      => true, // clic en el número del día → vista de día
+            'headerToolbar' => [
+                'left'   => 'prev,next today',
+                'center' => 'title',
+                'right'  => 'dayGridMonth,timeGridWeek,timeGridDay',
+            ],
+            'slotMinTime'   => '06:00:00',
+            'slotMaxTime'   => '20:00:00',
+            'nowIndicator'  => true,
+        ];
+    }
+
     protected function headerActions(): array
     {
         return [

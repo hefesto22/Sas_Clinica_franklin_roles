@@ -35,8 +35,9 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->brandName(config('app.name'))
             // si hay logo, úsalo
-            ->brandLogo($logo ? asset($logo) : null)
-            ->brandLogoHeight('5.0rem')
+            // ?v=2: fuerza al navegador a recargar el PNG recortado (cache-busting)
+            ->brandLogo($logo ? asset($logo) . '?v=2' : null)
+            ->brandLogoHeight('4.0rem')
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('18rem')
             ->login()
@@ -71,6 +72,34 @@ class AdminPanelProvider extends PanelProvider
                     ->selectable(),
 
             ])
+            // FullCalendar no conoce el modo oscuro de Filament: estas variables
+            // adaptan popovers ("+N más"), bordes y fondos a ambos temas.
+            ->renderHook('panels::styles.after', fn (): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(<<<'HTML'
+                <style>
+                    .dark .fc {
+                        --fc-page-bg-color: rgb(24 24 27);        /* zinc-900 */
+                        --fc-neutral-bg-color: rgb(39 39 42);     /* zinc-800 */
+                        --fc-border-color: rgb(63 63 70);         /* zinc-700 */
+                        --fc-neutral-text-color: rgb(212 212 216);
+                        --fc-list-event-hover-bg-color: rgb(39 39 42);
+                        --fc-today-bg-color: rgb(57 201 40 / 0.10);
+                    }
+                    .dark .fc .fc-popover {
+                        background: rgb(24 24 27);
+                        border-color: rgb(63 63 70);
+                        box-shadow: 0 10px 25px rgb(0 0 0 / 0.5);
+                    }
+                    .dark .fc .fc-popover-header {
+                        background: rgb(39 39 42);
+                        color: rgb(244 244 245);
+                    }
+                    .dark .fc .fc-popover-body .fc-event-title,
+                    .dark .fc .fc-popover-body .fc-event-time {
+                        color: rgb(228 228 231);
+                    }
+                    .fc .fc-popover { z-index: 40; border-radius: 0.5rem; overflow: hidden; }
+                </style>
+                HTML))
             ->authMiddleware([
                 Authenticate::class,
             ]);

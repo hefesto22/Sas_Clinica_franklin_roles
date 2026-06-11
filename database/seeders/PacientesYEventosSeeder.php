@@ -65,7 +65,8 @@ class PacientesYEventosSeeder extends Seeder
         }
 
         // ---------- 3) Asignar 1 cita por cliente respetando la disponibilidad ----------
-        $inicio = Carbon::create(2025, 8, 20, 0, 0, 0);
+        // Las citas de prueba se generan desde hoy hacia adelante
+        $inicio = Carbon::today();
 
         $eventosCreados = 0;
         $clienteIndex   = 0;
