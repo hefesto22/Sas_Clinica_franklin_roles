@@ -69,9 +69,15 @@ class CalendarWidget extends FullCalendarWidget
             'dayMaxEvents'  => 4, // máx. citas visibles por día en vista mes
             'navLinks'      => true, // clic en el número del día → vista de día
             'headerToolbar' => [
-                'left'   => 'prev,next today',
-                'center' => 'title',
-                'right'  => 'dayGridMonth,timeGridWeek,timeGridDay',
+                'left'   => 'title',
+                'center' => '',
+                'right'  => 'today prev,next dayGridMonth,timeGridWeek,timeGridDay',
+            ],
+            'buttonText' => [
+                'today' => 'Hoy',
+                'month' => 'Mes',
+                'week'  => 'Semana',
+                'day'   => 'Día',
             ],
             'slotMinTime'   => '06:00:00',
             'slotMaxTime'   => '20:00:00',
@@ -182,7 +188,12 @@ class CalendarWidget extends FullCalendarWidget
 
     public function fetchEvents(array $fetchInfo): array
     {
-        return Event::with(['cliente:id,nombre', 'consultorio:id,nombre', 'doctor:id,name']) // 👈 agrega la relación doctor
+        return Event::with([
+            'cliente:id,nombre,telefono',
+            'consultorio:id,nombre',
+            'doctor:id,name',
+            'especialidades:especialidades.id,nombre',
+        ])
             ->whereBetween('start_at', [$fetchInfo['start'], $fetchInfo['end']])
             ->where('estado', '!=', 'Cancelado')   // ⬅️ excluye canceladas
             ->when(!is_null($this->consultorioFilter), function ($q) {
@@ -191,20 +202,54 @@ class CalendarWidget extends FullCalendarWidget
             ->get()
             ->map(fn(Event $event) => [
                 'id'    => $event->id,
-                'title' => ($event->cliente->nombre ?? 'Sin nombre')
-                    . ' - ' . ($event->consultorio->nombre ?? 'Sin consultorio')
-                    . ' - ' . ($event->doctor->name ?? 'Sin doctor'), // 👈 aquí agregamos el doctor
+                // Título limpio: la hora la pinta FullCalendar; el resto va al tooltip
+                'title' => $event->cliente->nombre ?? 'Sin nombre',
                 'start' => $event->start_at instanceof \Carbon\Carbon ? $event->start_at->toIso8601String() : $event->start_at,
                 'end'   => $event->end_at   instanceof \Carbon\Carbon ? $event->end_at->toIso8601String()   : $event->end_at,
-                'color' => match ($event->estado) {
-                    'Confirmado'  => 'green',
-                    'Reagendado'  => 'blue',
-                    'Reagendando' => 'orange',
-                    'Se Presentó' => 'teal',
-                    default       => 'gray',
-                },
+                'backgroundColor' => self::COLORES_ESTADO[$event->estado] ?? self::COLORES_ESTADO['Pendiente'],
+                'borderColor'     => self::COLORES_ESTADO[$event->estado] ?? self::COLORES_ESTADO['Pendiente'],
+                'textColor'       => '#ffffff',
+                'extendedProps' => [
+                    'estado'        => $event->estado,
+                    'consultorio'   => $event->consultorio->nombre ?? 'Sin consultorio',
+                    'doctor'        => $event->doctor->name ?? 'Sin doctor',
+                    'telefono'      => $event->cliente->telefono ?? '—',
+                    'especialidades' => $event->especialidades->pluck('nombre')->implode(', ') ?: '—',
+                ],
             ])
             ->all();
+    }
+
+    /** Paleta por estado de cita (compartida entre evento y leyenda). */
+    private const COLORES_ESTADO = [
+        'Pendiente'   => '#64748b', // slate
+        'Confirmado'  => '#16a34a', // green
+        'Reagendado'  => '#2563eb', // blue
+        'Reagendando' => '#d97706', // amber
+        'Se Presentó' => '#0d9488', // teal
+    ];
+
+    /**
+     * Tooltip nativo con la ficha resumida de la cita al pasar el mouse.
+     */
+    public function eventDidMount(): string
+    {
+        return <<<'JS'
+            function({ event, el }) {
+                const p = event.extendedProps;
+                const hora = event.start
+                    ? event.start.toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' })
+                    : '';
+
+                el.setAttribute('title',
+                    hora + ' — ' + event.title + '\n' +
+                    'Estado: ' + (p.estado ?? '') + '\n' +
+                    (p.consultorio ?? '') + ' · ' + (p.doctor ?? '') + '\n' +
+                    'Especialidades: ' + (p.especialidades ?? '') + '\n' +
+                    'Tel: ' + (p.telefono ?? '')
+                );
+            }
+        JS;
     }
 
 
