@@ -81,23 +81,26 @@ class CalendarWidget extends FullCalendarWidget
 
                     unset($data['especialidades'], $data['servicios'], $data['cancelado_evento_id']);
 
-                    $event = Event::create($data);
+                    try {
+                        // Reglas de negocio + transacción con lock en el Service
+                        return app(\App\Services\Agenda\AgendaService::class)->agendar(
+                            data: $data,
+                            especialidades: $especialidades ?: [],
+                            servicios: $servicios ?: [],
+                            canceladoEventoId: $canceladoId ? (int) $canceladoId : null,
+                        );
+                    } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                        Notification::make()
+                            ->title('No se pudo agendar la cita')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
 
-                    if ($especialidades) {
-                        $event->especialidades()->sync($especialidades);
+                        // Mantiene el modal abierto mostrando el motivo
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'start_time' => $e->getMessage(),
+                        ]);
                     }
-                    if ($servicios) {
-                        $event->servicios()->sync($servicios);
-                    }
-
-                    // 🔹 si era una cancelada, eliminarla
-                    if ($canceladoId) {
-                        Event::where('id', $canceladoId)
-                            ->where('estado', 'Cancelado')
-                            ->delete();
-                    }
-
-                    return $event;
                 }),
 
 
@@ -257,8 +260,7 @@ class CalendarWidget extends FullCalendarWidget
                             && $record->estado !== 'Reagendando'
                     )
                     ->action(function ($record) {
-                        $record->estado = 'Confirmado';
-                        $record->save();
+                        app(\App\Services\Agenda\AgendaService::class)->confirmar($record);
                     }),
 
                 \Filament\Forms\Components\Actions\Action::make('se_presento')
@@ -366,64 +368,22 @@ class CalendarWidget extends FullCalendarWidget
                     ->icon('heroicon-o-x-circle')
                     ->visible(fn($record) => $record?->estado === 'Confirmado')
                     ->action(function ($record) {
-                        $horaDeseada   = \Carbon\Carbon::parse($record->start_at)->format('H:i:s');
-                        $consultorioId = $record->consultorio_id;
+                        try {
+                            $nueva = app(\App\Services\Agenda\AgendaService::class)->noSePresento($record);
 
-                        // Empezar desde el día siguiente
-                        $proximaFecha = \Carbon\Carbon::parse($record->start_at)->copy()->addDay();
-
-                        // Si cae domingo, mover a lunes
-                        if ($proximaFecha->isSunday()) {
-                            $proximaFecha->addDay();
+                            \Filament\Notifications\Notification::make()
+                                ->title('Reagendado')
+                                ->body('El paciente fue reagendado para el ' .
+                                    Carbon::parse($nueva->start_at)->locale('es')->translatedFormat('l d \\d\\e F h:i A'))
+                                ->success()
+                                ->send();
+                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('No se pudo reagendar')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
                         }
-
-                        $fechaDisponible = null;
-
-                        while (!$fechaDisponible) {
-                            // Evita domingos dentro del bucle también
-                            if ($proximaFecha->isSunday()) {
-                                $proximaFecha->addDay();
-                                continue;
-                            }
-
-                            $fechaHora = $proximaFecha->copy()->setTimeFromTimeString($horaDeseada);
-
-                            $yaOcupado = \App\Models\Event::where('consultorio_id', $consultorioId)
-                                ->where('start_at', $fechaHora)
-                                ->exists();
-
-                            if (!$yaOcupado) {
-                                $fechaDisponible = $fechaHora;
-                                break;
-                            }
-
-                            $proximaFecha->addDay();
-                        }
-
-                        // Crear nuevo evento base
-                        $nuevo = \App\Models\Event::create([
-                            'cliente_id'     => $record->cliente_id,
-                            'consultorio_id' => $record->consultorio_id,
-                            'usuario_id'     => $record->usuario_id,
-                            'start_at'       => $fechaDisponible,
-                            'end_at'         => $fechaDisponible->copy()->addMinutes(30), // cambia a 30 si tu slot es de 30'
-                            'estado'         => 'Pendiente',
-                            'created_by'     => \Illuminate\Support\Facades\Auth::id(),
-                        ]);
-
-                        // Sincronizar especialidades y servicios
-                        $nuevo->especialidades()->sync($record->especialidades->pluck('id')->toArray());
-                        $nuevo->servicios()->sync($record->servicios->pluck('id')->toArray());
-
-
-                        // Eliminar el evento original
-                        $record->delete();
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Reagendado')
-                            ->body('El paciente fue reagendado para el ' . $fechaDisponible->locale('es')->translatedFormat('l d \\d\\e F h:i A'))
-                            ->success()
-                            ->send();
                     }),
 
                 //aca iniciamos reagendacion directa
@@ -433,51 +393,21 @@ class CalendarWidget extends FullCalendarWidget
                     ->icon('heroicon-o-calendar')
                     ->visible(fn($record) => $record && in_array($record->estado, ['Pendiente', 'Reagendado']))
                     ->action(function ($record) {
-                        $horaDeseada   = \Carbon\Carbon::parse($record->start_at)->format('H:i:s');
-                        $consultorioId = $record->consultorio_id;
+                        try {
+                            app(\App\Services\Agenda\AgendaService::class)->reagendarAlProximoDisponible($record);
 
-                        // Comienza desde el día siguiente
-                        $proximaFecha = \Carbon\Carbon::parse($record->start_at)->copy()->addDay();
-
-                        // Si cae en domingo, pasa a lunes
-                        if ($proximaFecha->isSunday()) {
-                            $proximaFecha->addDay();
+                            \Filament\Notifications\Notification::make()
+                                ->title('Cita reagendada')
+                                ->body('La cita ha sido reagendada automáticamente a la próxima fecha libre (evitando domingos).')
+                                ->success()
+                                ->send();
+                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('No se pudo reagendar')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
                         }
-
-                        $fechaDisponible = null;
-
-                        while (!$fechaDisponible) {
-                            // Si en el ciclo volvemos a caer en domingo, saltar a lunes
-                            if ($proximaFecha->isSunday()) {
-                                $proximaFecha->addDay();
-                                continue;
-                            }
-
-                            $fechaHora = $proximaFecha->copy()->setTimeFromTimeString($horaDeseada);
-
-                            $yaOcupado = \App\Models\Event::where('consultorio_id', $consultorioId)
-                                ->where('start_at', $fechaHora)
-                                ->exists();
-
-                            if (!$yaOcupado) {
-                                $fechaDisponible = $fechaHora;
-                                break;
-                            }
-
-                            $proximaFecha->addDay();
-                        }
-
-                        // Actualizar el evento actual (ajusta la duración si usas 30 min)
-                        $record->start_at = $fechaDisponible;
-                        $record->end_at   = $fechaDisponible->copy()->addMinutes(20);
-                        $record->estado   = 'Reagendado';
-                        $record->save();
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Cita reagendada')
-                            ->body('La cita ha sido reagendada automáticamente a la próxima fecha libre (evitando domingos).')
-                            ->success()
-                            ->send();
                     }),
 
 
@@ -516,35 +446,22 @@ class CalendarWidget extends FullCalendarWidget
                             }),
                     ])
                     ->action(function ($data, $record) {
-                        $eventoA = $record;
-                        $eventoB = \App\Models\Event::find($data['evento_reemplazo_id']);
+                        try {
+                            app(\App\Services\Agenda\AgendaService::class)
+                                ->solicitarIntercambio($record, (int) $data['evento_reemplazo_id']);
 
-                        if (!$eventoB) {
                             \Filament\Notifications\Notification::make()
-                                ->title('Error')
-                                ->body('No se encontró el evento alternativo.')
+                                ->title('Solicitud enviada')
+                                ->body('Se ha solicitado el cambio. Ambos pacientes están en estado "Reagendando".')
+                                ->success()
+                                ->send();
+                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('No se pudo solicitar el intercambio')
+                                ->body($e->getMessage())
                                 ->danger()
                                 ->send();
-                            return;
                         }
-
-                        // Cambiar ambos eventos a "Reagendando"
-                        $eventoA->update(['estado' => 'Reagendando']);
-                        $eventoB->update(['estado' => 'Reagendando']);
-
-                        // Registrar solicitud
-                        \App\Models\CambioEvento::create([
-                            'evento_id_origen' => $eventoA->id,
-                            'evento_id_destino' => $eventoB->id,
-                            'created_by' => \Illuminate\Support\Facades\Auth::id(),
-                            'estado' => 'pendiente',
-                        ]);
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Solicitud enviada')
-                            ->body('Se ha solicitado el cambio. Ambos pacientes están en estado "Reagendando".')
-                            ->success()
-                            ->send();
                     })
                     ->visible(fn($record) => $record?->estado === 'Pendiente'),
 
@@ -573,80 +490,24 @@ class CalendarWidget extends FullCalendarWidget
                             }),
                     ])
                     ->action(function (array $data, $record) {
-                        DB::transaction(function () use ($data, $record) {
-                            /** @var Event $eventoActual */
-                            $eventoActual = $record;
+                        try {
+                            app(\App\Services\Agenda\AgendaService::class)
+                                ->asignarCanceladaAlHorario($record, (int) $data['cancelado_id']);
 
-                            /** @var Event|null $eventoCancelado */
-                            $eventoCancelado = Event::with('cliente')->find($data['cancelado_id']);
-                            if (! $eventoCancelado || $eventoCancelado->estado !== 'Cancelado') {
-                                Notification::make()
-                                    ->title('No disponible')
-                                    ->body('La cita seleccionada ya no está en estado Cancelado.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+                            Notification::make()
+                                ->title('Reasignación completa')
+                                ->body('Se movió la cita actual a la próxima fecha disponible y la cita cancelada tomó su horario.')
+                                ->success()
+                                ->send();
 
-                            // Guardar slot original del evento actual
-                            $slotStart        = Carbon::parse($eventoActual->start_at);
-                            $slotEnd          = Carbon::parse($eventoActual->end_at);
-                            $duracionMin      = $slotEnd->diffInMinutes($slotStart);
-                            $consultorioId    = $eventoActual->consultorio_id;
-
-                            // 1) Buscar próxima fecha disponible para el evento actual (misma hora, sin domingos)
-                            $horaDeseada  = $slotStart->format('H:i:s');
-                            $proximaFecha = $slotStart->copy()->addDay();
-                            if ($proximaFecha->isSunday()) {
-                                $proximaFecha->addDay();
-                            }
-
-                            $estadosOcupados = ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando']; // Cancelado no bloquea
-
-                            $fechaDisponible = null;
-                            while (! $fechaDisponible) {
-                                if ($proximaFecha->isSunday()) { // evitar domingos
-                                    $proximaFecha->addDay();
-                                    continue;
-                                }
-
-                                $fechaHora = $proximaFecha->copy()->setTimeFromTimeString($horaDeseada);
-
-                                $yaOcupado = Event::where('consultorio_id', $consultorioId)
-                                    ->whereIn('estado', $estadosOcupados)
-                                    ->where('start_at', $fechaHora)
-                                    ->where('id', '!=', $eventoActual->id)
-                                    ->exists();
-
-                                if (! $yaOcupado) {
-                                    $fechaDisponible = $fechaHora;
-                                    break;
-                                }
-
-                                $proximaFecha->addDay();
-                            }
-
-                            // 2) Mover el evento actual a la próxima fecha disponible
-                            $eventoActual->start_at = $fechaDisponible;
-                            $eventoActual->end_at   = $fechaDisponible->copy()->addMinutes($duracionMin);
-                            $eventoActual->estado   = 'Reagendado';
-                            $eventoActual->save();
-
-                            // 3) El evento "Cancelado" toma el slot original del evento actual
-                            $eventoCancelado->consultorio_id = $consultorioId;
-                            $eventoCancelado->start_at       = $slotStart;
-                            $eventoCancelado->end_at         = $slotEnd;
-                            $eventoCancelado->estado         = 'Pendiente'; // o 'Confirmado' si prefieres
-                            $eventoCancelado->save();
-                        });
-
-                        Notification::make()
-                            ->title('Reasignación completa')
-                            ->body('Se movió la cita actual a la próxima fecha disponible y la cita cancelada tomó su horario.')
-                            ->success()
-                            ->send();
-
-                        $this->dispatch('refreshCalendar');
+                            $this->dispatch('refreshCalendar');
+                        } catch (\App\Exceptions\Agenda\AgendaException $e) {
+                            Notification::make()
+                                ->title('No disponible')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     }),
 
                 \Filament\Forms\Components\Actions\Action::make('cancelar_cita')   // ⬅️ NUEVO
@@ -659,7 +520,7 @@ class CalendarWidget extends FullCalendarWidget
                         $record && in_array($record->estado, ['Pendiente', 'Confirmado', 'Reagendado', 'Reagendando'])
                     )
                     ->action(function ($record) {
-                        $record->update(['estado' => 'Cancelado']);
+                        app(\App\Services\Agenda\AgendaService::class)->cancelar($record);
 
                         \Filament\Notifications\Notification::make()
                             ->title('Cita cancelada')

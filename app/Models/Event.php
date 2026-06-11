@@ -9,6 +9,18 @@ class Event extends Model
 {
     use HasFactory;
 
+    /**
+     * Estados que ocupan la franja en la agenda.
+     * Cancelado y "Se Presentó" no bloquean horarios futuros
+     * (misma lista que ya usaba el CalendarWidget al validar).
+     */
+    public const ESTADOS_OCUPADOS = [
+        'Pendiente',
+        'Confirmado',
+        'Reagendado',
+        'Reagendando',
+    ];
+
     protected $fillable = [
         'cliente_id',
         'consultorio_id',

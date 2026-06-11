@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Evaluacion extends Model
 {
+    use HasFactory;
+
     // 👇 fuerza el nombre correcto de la tabla
     protected $table = 'evaluaciones';
 

@@ -3,8 +3,6 @@
 namespace App\Observers;
 
 use App\Models\CambioEvento;
-use App\Models\HistorialPaciente;
-use Illuminate\Support\Facades\Auth;
 
 class CambioEventoObserver
 {
