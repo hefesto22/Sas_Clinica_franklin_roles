@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Cliente extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\RegistraAuditoria;
 
     protected $table = 'clientes';
 

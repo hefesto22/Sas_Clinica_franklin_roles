@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class EvaluacionDetalle extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\RegistraAuditoria;
 
     protected $fillable = [
         'evaluacion_id',

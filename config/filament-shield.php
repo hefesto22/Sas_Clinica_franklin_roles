@@ -27,7 +27,8 @@ return [
             'pages' => true,
             'widgets' => true,
             'resources' => true,
-            'custom_permissions' => false,
+            // Permisos de modelos SIN Resource propio (pestañas del expediente)
+            'custom_permissions' => true,
         ],
     ],
 
@@ -241,7 +242,42 @@ return [
     |
     */
 
-    'custom_permissions' => [],
+    /*
+     * Permisos de los modelos del expediente que NO tienen Resource propio
+     * (viven como pestañas dentro de Pacientes). Definirlos aquí hace que
+     * aparezcan en el editor de roles de Shield con su checkbox.
+     * Los nombres deben coincidir EXACTO con las Policies y el
+     * RolesYPermisosSeeder.
+     */
+    'custom_permissions' => [
+        // Evaluaciones / odontograma
+        'view_any_evaluacion'   => 'Ver lista de evaluaciones',
+        'view_evaluacion'       => 'Ver evaluación',
+        'create_evaluacion'     => 'Registrar evaluación',
+        'update_evaluacion'     => 'Editar evaluación',
+        'delete_evaluacion'     => 'Eliminar evaluación',
+
+        // Notas clínicas
+        'view_any_cliente_nota'   => 'Ver lista de notas clínicas',
+        'view_cliente_nota'       => 'Ver nota clínica',
+        'create_cliente_nota'     => 'Crear nota clínica',
+        'update_cliente_nota'     => 'Editar nota clínica',
+        'delete_cliente_nota'     => 'Eliminar nota clínica',
+
+        // Imágenes clínicas
+        'view_any_cliente_imagen'   => 'Ver lista de imágenes clínicas',
+        'view_cliente_imagen'       => 'Ver imagen clínica',
+        'create_cliente_imagen'     => 'Subir imagen clínica',
+        'update_cliente_imagen'     => 'Editar imagen clínica',
+        'delete_cliente_imagen'     => 'Eliminar imagen clínica',
+
+        // Actividades / pagos del expediente
+        'view_any_cliente_actividad'   => 'Ver lista de actividades/pagos',
+        'view_cliente_actividad'       => 'Ver actividad/pago',
+        'create_cliente_actividad'     => 'Registrar actividad/pago',
+        'update_cliente_actividad'     => 'Editar actividad/pago',
+        'delete_cliente_actividad'     => 'Eliminar actividad/pago',
+    ],
 
     /*
     |--------------------------------------------------------------------------

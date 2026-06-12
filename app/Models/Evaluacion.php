@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Evaluacion extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\RegistraAuditoria;
 
     // 👇 fuerza el nombre correcto de la tabla
     protected $table = 'evaluaciones';

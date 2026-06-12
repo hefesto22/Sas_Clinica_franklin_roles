@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class ClienteNota extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\RegistraAuditoria;
 
     protected $table = 'cliente_notas';
 

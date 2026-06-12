@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Event extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\RegistraAuditoria;
 
     /**
      * Estados que ocupan la franja en la agenda.
