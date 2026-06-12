@@ -52,10 +52,30 @@ it('no marca como leídas notas de otro cliente aunque se cuelen sus IDs', funct
     expect($notaAjena->refresh()->leida)->toBeFalse();
 });
 
-it('protege el historial: no se puede borrar un cliente con citas', function () {
+it('eliminar un cliente lo ARCHIVA y conserva su historial de citas', function () {
+    $cita    = Event::factory()->create();
+    $cliente = Cliente::find($cita->cliente_id);
+
+    $cliente->delete(); // soft delete
+
+    expect(Cliente::find($cliente->id))->toBeNull()                      // fuera de las listas
+        ->and(Cliente::withTrashed()->find($cliente->id))->not->toBeNull() // pero archivado
+        ->and(Event::find($cita->id))->not->toBeNull();                   // historial intacto
+});
+
+it('un cliente archivado puede restaurarse', function () {
+    $cliente = Cliente::factory()->create();
+    $cliente->delete();
+
+    Cliente::withTrashed()->find($cliente->id)->restore();
+
+    expect(Cliente::find($cliente->id))->not->toBeNull();
+});
+
+it('protege el historial: el borrado FÍSICO de un cliente con citas es rechazado', function () {
     $cita = Event::factory()->create();
 
-    expect(fn () => Cliente::find($cita->cliente_id)->delete())
+    expect(fn () => Cliente::find($cita->cliente_id)->forceDelete())
         ->toThrow(\Illuminate\Database\QueryException::class);
 });
 
@@ -66,9 +86,29 @@ it('protege la agenda: no se puede borrar un consultorio con citas', function ()
         ->toThrow(\Illuminate\Database\QueryException::class);
 });
 
-it('protege el odontograma: no se puede borrar un cliente con evaluaciones', function () {
-    $evaluacion = \App\Models\Evaluacion::factory()->create();
+it('una cita archivada libera su franja en la agenda', function () {
+    $consultorio = \App\Models\Consultorio::factory()->create();
+    \App\Models\ConsultorioTurno::factory()->create([
+        'consultorio_id' => $consultorio->id,
+        'dia_semana'     => 1,
+        'hora_inicio'    => '08:00',
+        'hora_fin'       => '10:00',
+        'modo'           => 'horario',
+        'slot_minutos'   => 30,
+    ]);
 
-    expect(fn () => Cliente::find($evaluacion->cliente_id)->delete())
-        ->toThrow(\Illuminate\Database\QueryException::class);
+    $lunes = \Illuminate\Support\Carbon::now()->next(\Illuminate\Support\Carbon::MONDAY)->setTime(8, 0);
+
+    $cita = Event::factory()->for($consultorio)->pendiente()
+        ->enFranja($lunes->toDateTimeString())->create();
+
+    $disponibilidad = app(\App\Services\Agenda\DisponibilidadService::class);
+
+    expect($disponibilidad->opcionesDisponibles($consultorio->id, $lunes->toDateString()))
+        ->not->toHaveKey('08:00');
+
+    $cita->delete(); // archivada → el scope la excluye de toda la agenda
+
+    expect($disponibilidad->opcionesDisponibles($consultorio->id, $lunes->toDateString()))
+        ->toHaveKey('08:00');
 });

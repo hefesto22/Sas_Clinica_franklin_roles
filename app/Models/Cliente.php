@@ -10,6 +10,7 @@ class Cliente extends Model
 {
     use HasFactory;
     use \App\Models\Concerns\RegistraAuditoria;
+    use \Illuminate\Database\Eloquent\SoftDeletes; // los pacientes se archivan, no se borran
 
     protected $table = 'clientes';
 

@@ -29,6 +29,7 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ClienteResource extends Resource
 {
@@ -37,8 +38,24 @@ class ClienteResource extends Resource
     protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Pacientes';
     protected static ?string $pluralModelLabel = 'Pacientes';
-    protected static ?string $modelLabel = 'Cliente';
+    protected static ?string $modelLabel = 'Paciente';
     protected static string | \UnitEnum | null $navigationGroup = 'Gestión de Pacientes';
+
+    /** Búsqueda global (barra superior): encuentra pacientes desde cualquier pantalla. */
+    protected static ?string $recordTitleAttribute = 'nombre';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['nombre', 'dni', 'telefono'];
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return [
+            'DNI'      => $record->dni,
+            'Teléfono' => $record->telefono ?? '—',
+        ];
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -49,12 +66,16 @@ class ClienteResource extends Resource
                         ->label('Nombre completo')
                         ->required()
                         ->maxLength(255)
+                        ->autofocus()
                         ->columnSpan(6),
 
                     TextInput::make('dni')
                         ->label('DNI')
                         ->required()
                         ->unique(ignoreRecord: true)
+                        ->validationMessages([
+                            'unique' => 'Ya existe un paciente con este DNI (revisa también los archivados).',
+                        ])
                         ->maxLength(50)
                         ->columnSpan(3),
 
@@ -82,7 +103,9 @@ class ClienteResource extends Resource
                 ]),
             ])->collapsible(),
 
-            Section::make('Contacto de emergencia')->schema([
+            Section::make('Contacto de emergencia')
+                ->collapsed(fn (string $operation): bool => $operation === 'create')
+                ->schema([
                 Grid::make(12)->schema([
                     TextInput::make('contacto_emergencia_nombre')
                         ->label('Nombre')
@@ -97,12 +120,16 @@ class ClienteResource extends Resource
             ])->collapsible(),
 
             Section::make('Datos clínicos rápidos')->schema([
-                Textarea::make('motivo_consulta')
-                    ->label('Motivo de consulta')
-                    ->rows(3),
-                Textarea::make('alergias')
-                    ->label('Alergias')
-                    ->rows(3),
+                Grid::make(2)->schema([
+                    Textarea::make('motivo_consulta')
+                        ->label('Motivo de consulta')
+                        ->rows(2)
+                        ->placeholder('Ej: dolor, limpieza, control de brackets...'),
+                    Textarea::make('alergias')
+                        ->label('Alergias')
+                        ->rows(2)
+                        ->placeholder('Ej: penicilina, anestesia... (vacío = ninguna conocida)'),
+                ]),
             ])->collapsible(),
 
             // ClienteResource.php (form)
@@ -166,17 +193,38 @@ class ClienteResource extends Resource
                         'activo' => 'Activo',
                         'inactivo' => 'Inactivo',
                     ]),
+                \Filament\Tables\Filters\TrashedFilter::make()
+                    ->label('Archivados'),
             ])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->label('Archivar')
+                    ->modalHeading('Archivar paciente')
+                    ->modalDescription('El expediente se archiva y deja de aparecer en las listas; su historial se conserva y puede restaurarse.')
+                    ->successNotificationTitle('Paciente archivado'),
+                \Filament\Actions\RestoreAction::make()
+                    ->label('Restaurar'),
+                \Filament\Actions\ForceDeleteAction::make()
+                    ->label('Eliminar definitivo'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Archivar seleccionados'),
+                    \Filament\Actions\RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Incluye archivados cuando el filtro lo pide (patrón estándar SoftDeletes).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([\Illuminate\Database\Eloquent\SoftDeletingScope::class]);
     }
 
     public static function getRelations(): array

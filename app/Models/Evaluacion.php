@@ -9,6 +9,7 @@ class Evaluacion extends Model
 {
     use HasFactory;
     use \App\Models\Concerns\RegistraAuditoria;
+    use \Illuminate\Database\Eloquent\SoftDeletes; // el odontograma se archiva, no se borra
 
     // 👇 fuerza el nombre correcto de la tabla
     protected $table = 'evaluaciones';

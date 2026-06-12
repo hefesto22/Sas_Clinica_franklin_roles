@@ -35,7 +35,7 @@ class EvaluacionesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            \Filament\Schemas\Components\Section::make('Datos generales')
+            \Filament\Schemas\Components\Section::make('Datos generales')->columnSpanFull()
                 ->columns(4)
                 ->schema([
                     DatePicker::make('fecha')
@@ -54,104 +54,104 @@ class EvaluacionesRelationManager extends RelationManager
                         ->columnSpanFull(),
                 ]),
 
-            \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')
+            \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')->columnSpanFull()
                 ->schema([
                     \Filament\Schemas\Components\Grid::make(['default' => 2, 'md' => 4])->schema([
                         // Fila 1
-                        Textarea::make('dx.1_8')->label('1.8')->rows(2),
-                        Placeholder::make('gap_1')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_2')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.2_8')->label('2.8')->rows(2),
+                        TextInput::make('dx.1_8')->label('1.8')->inlineLabel(),
+                        Placeholder::make('gap_1')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_2')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.2_8')->label('2.8')->inlineLabel(),
 
                         // Fila 2
-                        Textarea::make('dx.1_7')->label('1.7')->rows(2),
-                        Placeholder::make('gap_3')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_4')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.2_7')->label('2.7')->rows(2),
+                        TextInput::make('dx.1_7')->label('1.7')->inlineLabel(),
+                        Placeholder::make('gap_3')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_4')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.2_7')->label('2.7')->inlineLabel(),
 
                         // Fila 3
-                        Textarea::make('dx.1_6')->label('1.6')->rows(2),
-                        Placeholder::make('gap_5')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_6')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.2_6')->label('2.6')->rows(2),
+                        TextInput::make('dx.1_6')->label('1.6')->inlineLabel(),
+                        Placeholder::make('gap_5')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_6')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.2_6')->label('2.6')->inlineLabel(),
 
                         // Fila 4
-                        Textarea::make('dx.1_5')->label('1.5')->rows(2),
-                        Textarea::make('dx.5_5')->label('5.5')->rows(2),
-                        Textarea::make('dx.2_5')->label('2.5')->rows(2),
-                        Textarea::make('dx.6_5')->label('6.5')->rows(2),
+                        TextInput::make('dx.1_5')->label('1.5')->inlineLabel(),
+                        TextInput::make('dx.5_5')->label('5.5')->inlineLabel(),
+                        TextInput::make('dx.2_5')->label('2.5')->inlineLabel(),
+                        TextInput::make('dx.6_5')->label('6.5')->inlineLabel(),
 
                         // Fila 5
-                        Textarea::make('dx.1_4')->label('1.4')->rows(2),
-                        Textarea::make('dx.5_4')->label('5.4')->rows(2),
-                        Textarea::make('dx.2_4')->label('2.4')->rows(2),
-                        Textarea::make('dx.6_4')->label('6.4')->rows(2),
+                        TextInput::make('dx.1_4')->label('1.4')->inlineLabel(),
+                        TextInput::make('dx.5_4')->label('5.4')->inlineLabel(),
+                        TextInput::make('dx.2_4')->label('2.4')->inlineLabel(),
+                        TextInput::make('dx.6_4')->label('6.4')->inlineLabel(),
 
                         // Fila 6
-                        Textarea::make('dx.1_3')->label('1.3')->rows(2),
-                        Textarea::make('dx.5_3')->label('5.3')->rows(2),
-                        Textarea::make('dx.2_3')->label('2.3')->rows(2),
-                        Textarea::make('dx.6_3')->label('6.3')->rows(2),
+                        TextInput::make('dx.1_3')->label('1.3')->inlineLabel(),
+                        TextInput::make('dx.5_3')->label('5.3')->inlineLabel(),
+                        TextInput::make('dx.2_3')->label('2.3')->inlineLabel(),
+                        TextInput::make('dx.6_3')->label('6.3')->inlineLabel(),
 
                         // Fila 7
-                        Textarea::make('dx.1_2')->label('1.2')->rows(2),
-                        Textarea::make('dx.5_2')->label('5.2')->rows(2),
-                        Textarea::make('dx.2_2')->label('2.2')->rows(2),
-                        Textarea::make('dx.6_2')->label('6.2')->rows(2),
+                        TextInput::make('dx.1_2')->label('1.2')->inlineLabel(),
+                        TextInput::make('dx.5_2')->label('5.2')->inlineLabel(),
+                        TextInput::make('dx.2_2')->label('2.2')->inlineLabel(),
+                        TextInput::make('dx.6_2')->label('6.2')->inlineLabel(),
 
                         // Fila 8
-                        Textarea::make('dx.1_1')->label('1.1')->rows(2),
-                        Textarea::make('dx.5_1')->label('5.1')->rows(2),
-                        Textarea::make('dx.2_1')->label('2.1')->rows(2),
-                        Textarea::make('dx.6_1')->label('6.1')->rows(2),
+                        TextInput::make('dx.1_1')->label('1.1')->inlineLabel(),
+                        TextInput::make('dx.5_1')->label('5.1')->inlineLabel(),
+                        TextInput::make('dx.2_1')->label('2.1')->inlineLabel(),
+                        TextInput::make('dx.6_1')->label('6.1')->inlineLabel(),
 
                         // Fila 9
-                        Textarea::make('dx.3_1')->label('3.1')->rows(2),
-                        Textarea::make('dx.7_1')->label('7.1')->rows(2),
-                        Textarea::make('dx.4_1')->label('4.1')->rows(2),
-                        Textarea::make('dx.8_1')->label('8.1')->rows(2),
+                        TextInput::make('dx.3_1')->label('3.1')->inlineLabel(),
+                        TextInput::make('dx.7_1')->label('7.1')->inlineLabel(),
+                        TextInput::make('dx.4_1')->label('4.1')->inlineLabel(),
+                        TextInput::make('dx.8_1')->label('8.1')->inlineLabel(),
 
                         // Fila 10
-                        Textarea::make('dx.3_2')->label('3.2')->rows(2),
-                        Textarea::make('dx.7_2')->label('7.2')->rows(2),
-                        Textarea::make('dx.4_2')->label('4.2')->rows(2),
-                        Textarea::make('dx.8_2')->label('8.2')->rows(2),
+                        TextInput::make('dx.3_2')->label('3.2')->inlineLabel(),
+                        TextInput::make('dx.7_2')->label('7.2')->inlineLabel(),
+                        TextInput::make('dx.4_2')->label('4.2')->inlineLabel(),
+                        TextInput::make('dx.8_2')->label('8.2')->inlineLabel(),
 
                         // Fila 11
-                        Textarea::make('dx.3_3')->label('3.3')->rows(2),
-                        Textarea::make('dx.7_3')->label('7.3')->rows(2),
-                        Textarea::make('dx.4_3')->label('4.3')->rows(2),
-                        Textarea::make('dx.8_3')->label('8.3')->rows(2),
+                        TextInput::make('dx.3_3')->label('3.3')->inlineLabel(),
+                        TextInput::make('dx.7_3')->label('7.3')->inlineLabel(),
+                        TextInput::make('dx.4_3')->label('4.3')->inlineLabel(),
+                        TextInput::make('dx.8_3')->label('8.3')->inlineLabel(),
 
                         // Fila 12
-                        Textarea::make('dx.3_4')->label('3.4')->rows(2),
-                        Textarea::make('dx.7_4')->label('7.4')->rows(2),
-                        Textarea::make('dx.4_4')->label('4.4')->rows(2),
-                        Textarea::make('dx.8_4')->label('8.4')->rows(2),
+                        TextInput::make('dx.3_4')->label('3.4')->inlineLabel(),
+                        TextInput::make('dx.7_4')->label('7.4')->inlineLabel(),
+                        TextInput::make('dx.4_4')->label('4.4')->inlineLabel(),
+                        TextInput::make('dx.8_4')->label('8.4')->inlineLabel(),
 
                         // Fila 13
-                        Textarea::make('dx.3_5')->label('3.5')->rows(2),
-                        Textarea::make('dx.7_5')->label('7.5')->rows(2),
-                        Textarea::make('dx.4_5')->label('4.5')->rows(2),
-                        Textarea::make('dx.8_5')->label('8.5')->rows(2),
+                        TextInput::make('dx.3_5')->label('3.5')->inlineLabel(),
+                        TextInput::make('dx.7_5')->label('7.5')->inlineLabel(),
+                        TextInput::make('dx.4_5')->label('4.5')->inlineLabel(),
+                        TextInput::make('dx.8_5')->label('8.5')->inlineLabel(),
 
                         // Fila 14
-                        Textarea::make('dx.3_6')->label('3.6')->rows(2),
-                        Placeholder::make('gap_7')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_8')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.4_6')->label('4.6')->rows(2),
+                        TextInput::make('dx.3_6')->label('3.6')->inlineLabel(),
+                        Placeholder::make('gap_7')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_8')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.4_6')->label('4.6')->inlineLabel(),
 
                         // Fila 15
-                        Textarea::make('dx.3_7')->label('3.7')->rows(2),
-                        Placeholder::make('gap_9')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_10')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.4_7')->label('4.7')->rows(2),
+                        TextInput::make('dx.3_7')->label('3.7')->inlineLabel(),
+                        Placeholder::make('gap_9')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_10')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.4_7')->label('4.7')->inlineLabel(),
 
                         // Fila 16
-                        Textarea::make('dx.3_8')->label('3.8')->rows(2),
-                        Placeholder::make('gap_11')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Placeholder::make('gap_12')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                        Textarea::make('dx.4_8')->label('4.8')->rows(2),
+                        TextInput::make('dx.3_8')->label('3.8')->inlineLabel(),
+                        Placeholder::make('gap_11')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        Placeholder::make('gap_12')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                        TextInput::make('dx.4_8')->label('4.8')->inlineLabel(),
                     ]),
                 ]),
         ]);
@@ -171,6 +171,7 @@ class EvaluacionesRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Nueva evaluación')
+                    ->modalWidth('7xl') // hoja completa: 4 cuadrantes lado a lado
 
                     // 1) dx.* → detalles_payload (se hace en la acción)
                     ->mutateDataUsing(function (array $data): array {
@@ -208,11 +209,23 @@ class EvaluacionesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                // Odontograma interactivo: dientes por estado, clic para editar
+                \Filament\Actions\Action::make('odontograma')
+                    ->label('Odontograma')
+                    ->icon('heroicon-o-face-smile')
+                    ->color('info')
+                    ->modalHeading(fn (Model $record): string => 'Odontograma — ' . \Illuminate\Support\Carbon::parse($record->fecha)->format('d/m/Y'))
+                    ->modalWidth('5xl')
+                    ->modalContent(fn (Model $record) => view('filament.odontograma-modal', ['evaluacion' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
+
                 ViewAction::make()
                     ->modalHeading('Vista de evaluación')
+                    ->modalWidth('7xl')
                     ->schema([
                         // Datos generales
-                        \Filament\Schemas\Components\Section::make('Datos generales')
+                        \Filament\Schemas\Components\Section::make('Datos generales')->columnSpanFull()
                             ->columns(4)
                             ->schema([
                                 DatePicker::make('fecha')->label('Fecha')->disabled(),
@@ -222,258 +235,258 @@ class EvaluacionesRelationManager extends RelationManager
                             ]),
 
                         // Diagnóstico (idéntico a tu form, pero deshabilitado y autosize)
-                        \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')
+                        \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')->columnSpanFull()
                             ->schema([
                                 \Filament\Schemas\Components\Grid::make(['default' => 2, 'md' => 4])->schema([
                                     // Fila 1
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_8')->label('1.8')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_8')->label('1.8')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_8')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v1')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v2')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v1')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v2')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_8')->label('2.8')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_8')->label('2.8')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_8')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 2
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_7')->label('1.7')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_7')->label('1.7')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_7')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v3')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v4')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v3')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v4')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_7')->label('2.7')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_7')->label('2.7')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_7')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 3
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_6')->label('1.6')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_6')->label('1.6')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_6')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v5')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v6')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v5')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v6')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_6')->label('2.6')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_6')->label('2.6')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_6')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 4
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_5')->label('1.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_5')->label('1.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_5')->label('5.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.5_5')->label('5.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.5_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_5')->label('2.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_5')->label('2.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_5')->label('6.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.6_5')->label('6.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.6_5')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 5
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_4')->label('1.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_4')->label('1.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_4')->label('5.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.5_4')->label('5.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.5_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_4')->label('2.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_4')->label('2.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_4')->label('6.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.6_4')->label('6.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.6_4')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 6
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_3')->label('1.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_3')->label('1.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_3')->label('5.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.5_3')->label('5.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.5_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_3')->label('2.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_3')->label('2.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_3')->label('6.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.6_3')->label('6.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.6_3')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 7
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_2')->label('1.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_2')->label('1.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_2')->label('5.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.5_2')->label('5.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.5_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_2')->label('2.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_2')->label('2.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_2')->label('6.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.6_2')->label('6.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.6_2')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 8
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_1')->label('1.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.1_1')->label('1.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.1_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_1')->label('5.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.5_1')->label('5.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.5_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_1')->label('2.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.2_1')->label('2.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.2_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_1')->label('6.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.6_1')->label('6.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.6_1')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 9
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_1')->label('3.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_1')->label('3.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_1')->label('7.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.7_1')->label('7.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.7_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_1')->label('4.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_1')->label('4.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_1')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_1')->label('8.1')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.8_1')->label('8.1')->inlineLabel()->disabled(),
                                         Checkbox::make('done.8_1')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 10
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_2')->label('3.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_2')->label('3.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_2')->label('7.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.7_2')->label('7.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.7_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_2')->label('4.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_2')->label('4.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_2')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_2')->label('8.2')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.8_2')->label('8.2')->inlineLabel()->disabled(),
                                         Checkbox::make('done.8_2')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 11
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_3')->label('3.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_3')->label('3.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_3')->label('7.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.7_3')->label('7.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.7_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_3')->label('4.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_3')->label('4.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_3')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_3')->label('8.3')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.8_3')->label('8.3')->inlineLabel()->disabled(),
                                         Checkbox::make('done.8_3')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 12
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_4')->label('3.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_4')->label('3.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_4')->label('7.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.7_4')->label('7.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.7_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_4')->label('4.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_4')->label('4.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_4')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_4')->label('8.4')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.8_4')->label('8.4')->inlineLabel()->disabled(),
                                         Checkbox::make('done.8_4')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 13
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_5')->label('3.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_5')->label('3.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_5')->label('7.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.7_5')->label('7.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.7_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_5')->label('4.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_5')->label('4.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_5')->label('Hecho')->disabled(),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_5')->label('8.5')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.8_5')->label('8.5')->inlineLabel()->disabled(),
                                         Checkbox::make('done.8_5')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 14
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_6')->label('3.6')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_6')->label('3.6')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_6')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v7')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v8')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v7')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v8')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_6')->label('4.6')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_6')->label('4.6')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_6')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 15
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_7')->label('3.7')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_7')->label('3.7')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_7')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v9')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v10')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v9')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v10')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_7')->label('4.7')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_7')->label('4.7')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_7')->label('Hecho')->disabled(),
                                     ]),
 
                                     // Fila 16
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_8')->label('3.8')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.3_8')->label('3.8')->inlineLabel()->disabled(),
                                         Checkbox::make('done.3_8')->label('Hecho')->disabled(),
                                     ]),
-                                    Placeholder::make('gap_v11')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_v12')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v11')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_v12')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_8')->label('4.8')->rows(2)->autosize()->disabled(),
+                                        TextInput::make('dx.4_8')->label('4.8')->inlineLabel()->disabled(),
                                         Checkbox::make('done.4_8')->label('Hecho')->disabled(),
                                     ]),
                                 ]),
@@ -504,8 +517,9 @@ class EvaluacionesRelationManager extends RelationManager
 
 
                 EditAction::make()
+                    ->modalWidth('7xl')
                     ->schema([
-                        \Filament\Schemas\Components\Section::make('Datos generales')
+                        \Filament\Schemas\Components\Section::make('Datos generales')->columnSpanFull()
                             ->columns(4)
                             ->schema([
                                 DatePicker::make('fecha')->label('Fecha')->required(),
@@ -514,258 +528,258 @@ class EvaluacionesRelationManager extends RelationManager
                                 Textarea::make('observaciones')->label('Observaciones')->rows(2)->columnSpanFull(),
                             ]),
 
-                        \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')
+                        \Filament\Schemas\Components\Section::make('III. Diagnóstico clínico y radiográfico (formato de hoja)')->columnSpanFull()
                             ->schema([
                                 \Filament\Schemas\Components\Grid::make(['default' => 2, 'md' => 4])->schema([
                                     // Fila 1
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_8')->label('1.8')->rows(2),
+                                        TextInput::make('dx.1_8')->label('1.8')->inlineLabel(),
                                         Checkbox::make('done.1_8')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e1')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e2')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e1')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e2')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_8')->label('2.8')->rows(2),
+                                        TextInput::make('dx.2_8')->label('2.8')->inlineLabel(),
                                         Checkbox::make('done.2_8')->label('Hecho'),
                                     ]),
 
                                     // Fila 2
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_7')->label('1.7')->rows(2),
+                                        TextInput::make('dx.1_7')->label('1.7')->inlineLabel(),
                                         Checkbox::make('done.1_7')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e3')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e4')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e3')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e4')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_7')->label('2.7')->rows(2),
+                                        TextInput::make('dx.2_7')->label('2.7')->inlineLabel(),
                                         Checkbox::make('done.2_7')->label('Hecho'),
                                     ]),
 
                                     // Fila 3
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_6')->label('1.6')->rows(2),
+                                        TextInput::make('dx.1_6')->label('1.6')->inlineLabel(),
                                         Checkbox::make('done.1_6')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e5')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e6')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e5')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e6')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_6')->label('2.6')->rows(2),
+                                        TextInput::make('dx.2_6')->label('2.6')->inlineLabel(),
                                         Checkbox::make('done.2_6')->label('Hecho'),
                                     ]),
 
                                     // Fila 4
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_5')->label('1.5')->rows(2),
+                                        TextInput::make('dx.1_5')->label('1.5')->inlineLabel(),
                                         Checkbox::make('done.1_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_5')->label('5.5')->rows(2),
+                                        TextInput::make('dx.5_5')->label('5.5')->inlineLabel(),
                                         Checkbox::make('done.5_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_5')->label('2.5')->rows(2),
+                                        TextInput::make('dx.2_5')->label('2.5')->inlineLabel(),
                                         Checkbox::make('done.2_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_5')->label('6.5')->rows(2),
+                                        TextInput::make('dx.6_5')->label('6.5')->inlineLabel(),
                                         Checkbox::make('done.6_5')->label('Hecho'),
                                     ]),
 
                                     // Fila 5
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_4')->label('1.4')->rows(2),
+                                        TextInput::make('dx.1_4')->label('1.4')->inlineLabel(),
                                         Checkbox::make('done.1_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_4')->label('5.4')->rows(2),
+                                        TextInput::make('dx.5_4')->label('5.4')->inlineLabel(),
                                         Checkbox::make('done.5_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_4')->label('2.4')->rows(2),
+                                        TextInput::make('dx.2_4')->label('2.4')->inlineLabel(),
                                         Checkbox::make('done.2_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_4')->label('6.4')->rows(2),
+                                        TextInput::make('dx.6_4')->label('6.4')->inlineLabel(),
                                         Checkbox::make('done.6_4')->label('Hecho'),
                                     ]),
 
                                     // Fila 6
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_3')->label('1.3')->rows(2),
+                                        TextInput::make('dx.1_3')->label('1.3')->inlineLabel(),
                                         Checkbox::make('done.1_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_3')->label('5.3')->rows(2),
+                                        TextInput::make('dx.5_3')->label('5.3')->inlineLabel(),
                                         Checkbox::make('done.5_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_3')->label('2.3')->rows(2),
+                                        TextInput::make('dx.2_3')->label('2.3')->inlineLabel(),
                                         Checkbox::make('done.2_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_3')->label('6.3')->rows(2),
+                                        TextInput::make('dx.6_3')->label('6.3')->inlineLabel(),
                                         Checkbox::make('done.6_3')->label('Hecho'),
                                     ]),
 
                                     // Fila 7
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_2')->label('1.2')->rows(2),
+                                        TextInput::make('dx.1_2')->label('1.2')->inlineLabel(),
                                         Checkbox::make('done.1_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_2')->label('5.2')->rows(2),
+                                        TextInput::make('dx.5_2')->label('5.2')->inlineLabel(),
                                         Checkbox::make('done.5_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_2')->label('2.2')->rows(2),
+                                        TextInput::make('dx.2_2')->label('2.2')->inlineLabel(),
                                         Checkbox::make('done.2_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_2')->label('6.2')->rows(2),
+                                        TextInput::make('dx.6_2')->label('6.2')->inlineLabel(),
                                         Checkbox::make('done.6_2')->label('Hecho'),
                                     ]),
 
                                     // Fila 8
                                     Group::make()->schema([
-                                        Textarea::make('dx.1_1')->label('1.1')->rows(2),
+                                        TextInput::make('dx.1_1')->label('1.1')->inlineLabel(),
                                         Checkbox::make('done.1_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.5_1')->label('5.1')->rows(2),
+                                        TextInput::make('dx.5_1')->label('5.1')->inlineLabel(),
                                         Checkbox::make('done.5_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.2_1')->label('2.1')->rows(2),
+                                        TextInput::make('dx.2_1')->label('2.1')->inlineLabel(),
                                         Checkbox::make('done.2_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.6_1')->label('6.1')->rows(2),
+                                        TextInput::make('dx.6_1')->label('6.1')->inlineLabel(),
                                         Checkbox::make('done.6_1')->label('Hecho'),
                                     ]),
 
                                     // Fila 9
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_1')->label('3.1')->rows(2),
+                                        TextInput::make('dx.3_1')->label('3.1')->inlineLabel(),
                                         Checkbox::make('done.3_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_1')->label('7.1')->rows(2),
+                                        TextInput::make('dx.7_1')->label('7.1')->inlineLabel(),
                                         Checkbox::make('done.7_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_1')->label('4.1')->rows(2),
+                                        TextInput::make('dx.4_1')->label('4.1')->inlineLabel(),
                                         Checkbox::make('done.4_1')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_1')->label('8.1')->rows(2),
+                                        TextInput::make('dx.8_1')->label('8.1')->inlineLabel(),
                                         Checkbox::make('done.8_1')->label('Hecho'),
                                     ]),
 
                                     // Fila 10
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_2')->label('3.2')->rows(2),
+                                        TextInput::make('dx.3_2')->label('3.2')->inlineLabel(),
                                         Checkbox::make('done.3_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_2')->label('7.2')->rows(2),
+                                        TextInput::make('dx.7_2')->label('7.2')->inlineLabel(),
                                         Checkbox::make('done.7_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_2')->label('4.2')->rows(2),
+                                        TextInput::make('dx.4_2')->label('4.2')->inlineLabel(),
                                         Checkbox::make('done.4_2')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_2')->label('8.2')->rows(2),
+                                        TextInput::make('dx.8_2')->label('8.2')->inlineLabel(),
                                         Checkbox::make('done.8_2')->label('Hecho'),
                                     ]),
 
                                     // Fila 11
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_3')->label('3.3')->rows(2),
+                                        TextInput::make('dx.3_3')->label('3.3')->inlineLabel(),
                                         Checkbox::make('done.3_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_3')->label('7.3')->rows(2),
+                                        TextInput::make('dx.7_3')->label('7.3')->inlineLabel(),
                                         Checkbox::make('done.7_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_3')->label('4.3')->rows(2),
+                                        TextInput::make('dx.4_3')->label('4.3')->inlineLabel(),
                                         Checkbox::make('done.4_3')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_3')->label('8.3')->rows(2),
+                                        TextInput::make('dx.8_3')->label('8.3')->inlineLabel(),
                                         Checkbox::make('done.8_3')->label('Hecho'),
                                     ]),
 
                                     // Fila 12
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_4')->label('3.4')->rows(2),
+                                        TextInput::make('dx.3_4')->label('3.4')->inlineLabel(),
                                         Checkbox::make('done.3_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_4')->label('7.4')->rows(2),
+                                        TextInput::make('dx.7_4')->label('7.4')->inlineLabel(),
                                         Checkbox::make('done.7_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_4')->label('4.4')->rows(2),
+                                        TextInput::make('dx.4_4')->label('4.4')->inlineLabel(),
                                         Checkbox::make('done.4_4')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_4')->label('8.4')->rows(2),
+                                        TextInput::make('dx.8_4')->label('8.4')->inlineLabel(),
                                         Checkbox::make('done.8_4')->label('Hecho'),
                                     ]),
 
                                     // Fila 13
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_5')->label('3.5')->rows(2),
+                                        TextInput::make('dx.3_5')->label('3.5')->inlineLabel(),
                                         Checkbox::make('done.3_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.7_5')->label('7.5')->rows(2),
+                                        TextInput::make('dx.7_5')->label('7.5')->inlineLabel(),
                                         Checkbox::make('done.7_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_5')->label('4.5')->rows(2),
+                                        TextInput::make('dx.4_5')->label('4.5')->inlineLabel(),
                                         Checkbox::make('done.4_5')->label('Hecho'),
                                     ]),
                                     Group::make()->schema([
-                                        Textarea::make('dx.8_5')->label('8.5')->rows(2),
+                                        TextInput::make('dx.8_5')->label('8.5')->inlineLabel(),
                                         Checkbox::make('done.8_5')->label('Hecho'),
                                     ]),
 
                                     // Fila 14
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_6')->label('3.6')->rows(2),
+                                        TextInput::make('dx.3_6')->label('3.6')->inlineLabel(),
                                         Checkbox::make('done.3_6')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e7')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e8')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e7')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e8')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_6')->label('4.6')->rows(2),
+                                        TextInput::make('dx.4_6')->label('4.6')->inlineLabel(),
                                         Checkbox::make('done.4_6')->label('Hecho'),
                                     ]),
 
                                     // Fila 15
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_7')->label('3.7')->rows(2),
+                                        TextInput::make('dx.3_7')->label('3.7')->inlineLabel(),
                                         Checkbox::make('done.3_7')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e9')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e10')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e9')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e10')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_7')->label('4.7')->rows(2),
+                                        TextInput::make('dx.4_7')->label('4.7')->inlineLabel(),
                                         Checkbox::make('done.4_7')->label('Hecho'),
                                     ]),
 
                                     // Fila 16
                                     Group::make()->schema([
-                                        Textarea::make('dx.3_8')->label('3.8')->rows(2),
+                                        TextInput::make('dx.3_8')->label('3.8')->inlineLabel(),
                                         Checkbox::make('done.3_8')->label('Hecho'),
                                     ]),
-                                    Placeholder::make('gap_e11')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
-                                    Placeholder::make('gap_e12')->label('')->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e11')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
+                                    Placeholder::make('gap_e12')->hiddenLabel()->content(' ')->extraAttributes(['class' => 'hidden md:block']),
                                     Group::make()->schema([
-                                        Textarea::make('dx.4_8')->label('4.8')->rows(2),
+                                        TextInput::make('dx.4_8')->label('4.8')->inlineLabel(),
                                         Checkbox::make('done.4_8')->label('Hecho'),
                                     ]),
                                 ]),

@@ -9,6 +9,7 @@ class Event extends Model
 {
     use HasFactory;
     use \App\Models\Concerns\RegistraAuditoria;
+    use \Illuminate\Database\Eloquent\SoftDeletes; // las citas se archivan, no se borran
 
     /**
      * Estados que ocupan la franja en la agenda.
