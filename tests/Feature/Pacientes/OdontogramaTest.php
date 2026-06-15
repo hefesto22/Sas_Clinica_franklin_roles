@@ -2,6 +2,7 @@
 
 use App\Livewire\Odontograma;
 use App\Models\Cliente;
+use App\Models\Evaluacion;
 use App\Models\EvaluacionDetalleCondicion;
 use App\Models\User;
 use Database\Seeders\RolesYPermisosSeeder;
@@ -25,6 +26,22 @@ function usuarioOdontograma(string $rol): User
 
     return $user;
 }
+
+it('el odontograma es una evaluación dedicada y estable aunque existan hojas', function () {
+    $this->actingAs(usuarioOdontograma('doctor'));
+    $cliente = Cliente::factory()->create();
+
+    // Hojas por visita: NO son el odontograma.
+    Evaluacion::factory()->count(2)->create(['cliente_id' => $cliente->id, 'es_odontograma' => false]);
+
+    $odontograma = $cliente->odontograma();
+
+    // Crear otra hoja después no cambia el contenedor del odontograma.
+    Evaluacion::factory()->create(['cliente_id' => $cliente->id, 'es_odontograma' => false]);
+
+    expect($odontograma->es_odontograma)->toBeTrue()
+        ->and($cliente->fresh()->odontograma()->id)->toBe($odontograma->id);
+});
 
 it('el doctor registra una condición con un clic en el color', function () {
     $this->actingAs(usuarioOdontograma('doctor'));

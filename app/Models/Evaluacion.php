@@ -16,11 +16,16 @@ class Evaluacion extends Model
 
     protected $fillable = [
         'cliente_id',
+        'es_odontograma',
         'fecha',
         'limpieza_periodontal',
         'fluor',
         'observaciones',
         'user_id',
+    ];
+
+    protected $casts = [
+        'es_odontograma' => 'boolean',
     ];
 
     public function cliente()

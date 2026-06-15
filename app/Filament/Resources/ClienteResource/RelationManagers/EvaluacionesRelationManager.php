@@ -160,6 +160,8 @@ class EvaluacionesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // La evaluación dedicada al odontograma no es una "hoja": se oculta.
+            ->modifyQueryUsing(fn ($query) => $query->where('es_odontograma', false))
             ->columns([
                 TextColumn::make('fecha')->label('Fecha')->date()->sortable()->searchable(),
                 TextColumn::make('limpieza_periodontal')->label('Limpieza'),
@@ -169,6 +171,17 @@ class EvaluacionesRelationManager extends RelationManager
             ])
             ->filters([])
             ->headerActions([
+                // Odontograma único del paciente (a nivel paciente, no por hoja).
+                \Filament\Actions\Action::make('odontograma')
+                    ->label('Odontograma')
+                    ->icon('heroicon-o-face-smile')
+                    ->color('info')
+                    ->modalHeading('Odontograma del paciente')
+                    ->modalWidth('5xl')
+                    ->modalContent(fn () => view('filament.odontograma-modal', ['cliente' => $this->getOwnerRecord()]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
+
                 CreateAction::make()
                     ->label('Nueva evaluación')
                     ->modalWidth('7xl') // hoja completa: 4 cuadrantes lado a lado
@@ -209,18 +222,6 @@ class EvaluacionesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                // Odontograma interactivo: dientes por estado, clic para editar
-                \Filament\Actions\Action::make('odontograma')
-                    ->label('Odontograma')
-                    ->icon('heroicon-o-face-smile')
-                    ->color('info')
-                    ->modalHeading('Odontograma del paciente')
-                    ->modalWidth('5xl')
-                    // Odontograma único por paciente: siempre abre el mismo,
-                    // acumulando el historial de condiciones por pieza.
-                    ->modalContent(fn (Model $record) => view('filament.odontograma-modal', ['cliente' => $record->cliente]))
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Cerrar'),
 
                 ViewAction::make()
                     ->modalHeading('Vista de evaluación')

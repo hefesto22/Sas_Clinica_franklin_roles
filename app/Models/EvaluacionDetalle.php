@@ -30,14 +30,12 @@ class EvaluacionDetalle extends Model
     protected $fillable = [
         'evaluacion_id',
         'pieza',
-        'condiciones',
         'diagnostico',
         'hecho', // Nuevo campo para el checkbox
     ];
 
     protected $casts = [
-        'hecho'       => 'boolean',
-        'condiciones' => 'array',
+        'hecho' => 'boolean',
     ];
 
     public function evaluacion()

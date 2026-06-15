@@ -78,7 +78,7 @@ class Cliente extends Model
     public function odontograma(): Evaluacion
     {
         return $this->evaluaciones()->firstOrCreate(
-            ['cliente_id' => $this->getKey()],
+            ['es_odontograma' => true],
             ['fecha' => now()->toDateString(), 'user_id' => auth()->id()],
         );
     }
