@@ -213,80 +213,143 @@
 
     {{-- Panel de la pieza seleccionada --}}
     @if ($piezaSeleccionada)
+        @php $filas = $this->condicionesRowsDe($piezaSeleccionada); @endphp
         <div class="odo-panel">
             <h4>Pieza {{ $piezaSeleccionada }} — {{ ucfirst($this->tipoDe($piezaSeleccionada)) }}</h4>
 
+            {{-- Agregar condición: chips de color, un clic = registrar --}}
             @if ($this->puedeEditar)
-                <div class="grid2" style="grid-template-columns: 1fr 1fr;">
-                    <div>
-                        <label style="font-size:.8rem; opacity:.8; display:block; margin-bottom:.35rem;">
-                            Condiciones (puede marcar varias — el ✓ indica tratada)
-                        </label>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.3rem .75rem;">
-                            @foreach (EvaluacionDetalle::CONDICIONES as $clave => $info)
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:.4rem;">
-                                    <label class="odo-check-lbl" style="font-size:.82rem;">
-                                        <input type="checkbox" wire:model.live="condiciones" value="{{ $clave }}">
-                                        @if ($info['color'])
-                                            <i class="odo-chip" style="background: {{ $info['color'] }}cc; border-color: {{ $info['color'] }};"></i>
-                                        @else
-                                            <i class="odo-chip" style="border-style: dashed;"></i>
-                                        @endif
-                                        {{ $info['label'] }}
-                                    </label>
-
-                                    @if (in_array($clave, $condiciones, true))
-                                        <label class="odo-check-lbl" style="font-size:.75rem; color:#16a34a;" title="Marcar como tratada">
-                                            <input type="checkbox" wire:model.live="tratadas" value="{{ $clave }}">
-                                            ✓
-                                        </label>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    <div>
-                        <label style="font-size:.8rem; opacity:.8; display:block; margin-bottom:.35rem;">Nota / detalle (opcional)</label>
-                        <textarea rows="5" wire:model="diagnostico" placeholder="Ej: caries oclusal profunda, cara mesial..."></textarea>
+                <div style="margin-bottom:1rem;">
+                    <label style="font-size:.8rem; opacity:.8; display:block; margin-bottom:.45rem;">
+                        Agregar condición (un clic en el color)
+                    </label>
+                    <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
+                        @foreach ($this->catalogoCondiciones as $clave => $info)
+                            <button type="button" title="Agregar {{ $info['label'] }}"
+                                wire:click="agregarCondicion('{{ $clave }}')"
+                                wire:loading.attr="disabled"
+                                style="display:inline-flex; align-items:center; gap:.4rem; font-size:.82rem;
+                                       padding:.35rem .7rem; border-radius:.6rem; cursor:pointer; color:inherit;
+                                       background:{{ $info['color'] ? $info['color'].'1a' : 'transparent' }};
+                                       border:1.5px solid {{ $info['color'] ?? 'rgb(113 113 122 / .45)' }};">
+                                @if ($info['color'])
+                                    <i class="odo-chip" style="background: {{ $info['color'] }}cc; border-color: {{ $info['color'] }};"></i>
+                                @else
+                                    <i class="odo-chip" style="border-style: dashed;"></i>
+                                @endif
+                                {{ $info['label'] }}
+                            </button>
+                        @endforeach
                     </div>
                 </div>
-
-                <div class="fila-acciones">
-                    @if (empty($condiciones))
-                        <label class="odo-check-lbl">
-                            <input type="checkbox" wire:model="hecho">
-                            Tratamiento realizado
-                        </label>
-                    @else
-                        <span style="font-size:.78rem; opacity:.6;">
-                            La pieza queda ✓ cuando todas sus condiciones están tratadas.
-                        </span>
-                    @endif
-
-                    <button type="button" class="odo-btn" wire:click="guardar">Guardar pieza</button>
-                </div>
-            @else
-                @php
-                    $tratadasSel = $this->tratadasDe($piezaSeleccionada);
-                    $condsSel = collect($this->condicionesDe($piezaSeleccionada))
-                        ->map(fn ($c) => (EvaluacionDetalle::CONDICIONES[$c]['label'] ?? $c)
-                            . (in_array($c, $tratadasSel, true) ? ' ✓' : ''))
-                        ->implode(', ');
-                @endphp
-                <p style="font-size:.875rem; opacity:.9;">
-                    <strong>{{ $condsSel ?: 'Sin condición registrada' }}</strong>
-                    @if ($this->diagnosticoDe($piezaSeleccionada))
-                        — {{ $this->diagnosticoDe($piezaSeleccionada) }}
-                    @endif
-                </p>
-                @if ($this->estadoDe($piezaSeleccionada) === 'hecho')
-                    <p style="font-size:.8rem; color:#16a34a; font-weight:600; margin-top:.25rem;">✓ Tratamiento realizado</p>
-                @endif
             @endif
+
+            {{-- Historial de condiciones de la pieza (log) --}}
+            <div style="display:flex; flex-direction:column; gap:.4rem;
+                        {{ $this->puedeEditar ? 'border-top:1px solid rgb(113 113 122 / .3); padding-top:.8rem;' : '' }}">
+                @forelse ($filas as $fila)
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:.6rem;
+                                border:1px solid rgb(113 113 122 / .3); border-radius:.55rem; padding:.5rem .7rem;">
+                        <div style="min-width:0; flex:1;">
+                            <div style="display:flex; align-items:center; gap:.4rem; font-weight:600; font-size:.86rem;">
+                                @if ($fila->color)
+                                    <i class="odo-chip" style="background: {{ $fila->color }}cc; border-color: {{ $fila->color }};"></i>
+                                @else
+                                    <i class="odo-chip" style="border-style: dashed;"></i>
+                                @endif
+                                {{ $fila->etiqueta }}
+                                @if ($fila->tratada)
+                                    <span style="font-size:.7rem; color:#16a34a; font-weight:700;">✓ tratada</span>
+                                @else
+                                    <span style="font-size:.7rem; color:#d97706; font-weight:700;">● pendiente</span>
+                                @endif
+                            </div>
+
+                            @if ($editandoId === $fila->id)
+                                <div style="margin-top:.4rem;">
+                                    <textarea rows="2" wire:model="editNota"
+                                        placeholder="Nota de esta condición. Ej: caries oclusal profunda, cara mesial..."></textarea>
+                                    @error('editNota')
+                                        <span style="font-size:.72rem; color:#dc2626;">{{ $message }}</span>
+                                    @enderror
+                                    <div style="display:flex; gap:.4rem; margin-top:.35rem;">
+                                        <button type="button" class="odo-btn" style="padding:.25rem .8rem; font-size:.78rem;"
+                                            wire:click="guardarNota">Guardar nota</button>
+                                        <button type="button" wire:click="cancelarNota"
+                                            style="border:1px solid rgb(113 113 122 / .4); border-radius:.45rem; padding:.25rem .8rem; font-size:.78rem; cursor:pointer; background:transparent; color:inherit;">
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            @elseif ($tratandoId === $fila->id)
+                                <div style="margin-top:.4rem;">
+                                    <textarea rows="2" wire:model="notaTratamiento"
+                                        placeholder="Nota del tratamiento realizado (opcional). Ej: obturación con resina, cara oclusal..."></textarea>
+                                    @error('notaTratamiento')
+                                        <span style="font-size:.72rem; color:#dc2626;">{{ $message }}</span>
+                                    @enderror
+                                    <div style="display:flex; gap:.4rem; margin-top:.35rem;">
+                                        <button type="button" class="odo-btn" style="padding:.25rem .8rem; font-size:.78rem;"
+                                            wire:click="confirmarTratamiento">Confirmar tratada</button>
+                                        <button type="button" wire:click="cancelarTratamiento"
+                                            style="border:1px solid rgb(113 113 122 / .4); border-radius:.45rem; padding:.25rem .8rem; font-size:.78rem; cursor:pointer; background:transparent; color:inherit;">
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            @else
+                                @if ($fila->nota)
+                                    <div style="font-size:.8rem; opacity:.85; margin-top:.2rem;">{{ $fila->nota }}</div>
+                                @endif
+                                @if ($fila->nota_tratamiento)
+                                    <div style="font-size:.8rem; margin-top:.2rem; color:#16a34a;">
+                                        Tratamiento: {{ $fila->nota_tratamiento }}
+                                    </div>
+                                @endif
+                                <div style="font-size:.72rem; opacity:.6; margin-top:.2rem;">
+                                    Detectada: {{ optional($fila->detectada_en)->format('d/m/Y') ?? '—' }}
+                                    @if ($fila->tratada_en) · Tratada: {{ $fila->tratada_en->format('d/m/Y') }} @endif
+                                </div>
+                            @endif
+                        </div>
+
+                        @if ($this->puedeEditar && $editandoId !== $fila->id && $tratandoId !== $fila->id)
+                            <div style="display:flex; gap:.35rem; flex-shrink:0;">
+                                @if ($fila->tratada)
+                                    <button type="button" title="Marcar pendiente"
+                                        wire:click="alternarTratada({{ $fila->id }})"
+                                        style="border:1px solid rgb(113 113 122 / .4); border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:inherit;">
+                                        ↩
+                                    </button>
+                                @else
+                                    <button type="button" title="Marcar tratada"
+                                        wire:click="iniciarTratamiento({{ $fila->id }})"
+                                        style="border:1px solid #16a34a; border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:#16a34a;">
+                                        ✓
+                                    </button>
+                                @endif
+                                <button type="button" title="{{ $fila->nota ? 'Editar nota' : 'Agregar nota' }}"
+                                    wire:click="editarNota({{ $fila->id }})"
+                                    style="border:1px solid rgb(113 113 122 / .4); border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:inherit;">
+                                    ✎
+                                </button>
+                                <button type="button" title="Archivar condición"
+                                    wire:click="eliminarCondicion({{ $fila->id }})"
+                                    wire:confirm="¿Archivar esta condición de la pieza {{ $piezaSeleccionada }}?"
+                                    style="border:1px solid #dc2626; border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:#dc2626;">
+                                    🗑
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                @empty
+                    <p style="font-size:.82rem; opacity:.6;">Sin condiciones registradas en esta pieza.</p>
+                @endforelse
+            </div>
         </div>
     @else
         <p style="text-align:center; font-size:.85rem; opacity:.6; margin-top:.75rem;">
-            Haz clic en un diente para registrar su condición y diagnóstico.
+            Haz clic en un diente para ver y registrar sus condiciones.
         </p>
     @endif
 </div>

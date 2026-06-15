@@ -1,1 +1,1 @@
-@livewire(\App\Livewire\Odontograma::class, ['evaluacion' => $evaluacion], key('odontograma-'.$evaluacion->id))
+@livewire(\App\Livewire\Odontograma::class, ['cliente' => $cliente], key('odontograma-'.$cliente->id))

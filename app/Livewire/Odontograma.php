@@ -2,34 +2,44 @@
 
 namespace App\Livewire;
 
+use App\Models\Cliente;
 use App\Models\Evaluacion;
+use App\Models\EvaluacionDetalle;
+use App\Models\EvaluacionDetalleCondicion;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Collection;
 use Livewire\Component;
 
 /**
- * Odontograma interactivo por evaluación (notación FDI).
+ * Odontograma único por paciente (notación FDI).
  *
- * Pinta las arcadas con el estado de cada pieza según EvaluacionDetalle:
- * sin registro / con diagnóstico pendiente / tratado (hecho). Clic en un
- * diente para ver/editar su diagnóstico. Editar requiere el permiso
- * update de EvaluacionPolicy (doctor sí; asistente solo consulta).
+ * Cada pieza acumula un LOG de condiciones (EvaluacionDetalleCondicion): una
+ * fila por condición, con su nota y sus fechas. La misma condición puede
+ * repetirse en el tiempo sobre la misma pieza (recurrencia: el paciente
+ * vuelve por caries en el mismo diente).
+ *
+ * UX: se registra una condición con UN CLIC en su chip de color (rápido,
+ * como una ficha dental clásica). La nota y el estado "tratada" se ajustan
+ * después por fila. El chart pinta el estado actual derivándolo del log.
+ * Editar requiere el permiso update de EvaluacionPolicy.
  */
 class Odontograma extends Component
 {
+    public Cliente $cliente;
+
     public Evaluacion $evaluacion;
 
     public ?string $piezaSeleccionada = null;
 
-    /** @var array<string> Condiciones de la pieza seleccionada (multi). */
-    public array $condiciones = [];
+    /** Edición inline de la nota (detección) de una condición ya registrada. */
+    public ?int $editandoId = null;
 
-    /** @var array<string> Condiciones ya tratadas (subconjunto de las marcadas). */
-    public array $tratadas = [];
+    public string $editNota = '';
 
-    public string $diagnostico = '';
+    /** Marcar tratada con nota de tratamiento opcional. */
+    public ?int $tratandoId = null;
 
-    /** Tratamiento global: solo aplica cuando la pieza tiene nota sin condiciones. */
-    public bool $hecho = false;
+    public string $notaTratamiento = '';
 
     /** Arcadas en orden visual (notación FDI con punto, como guarda la BD). */
     public const ARCADAS = [
@@ -39,128 +49,268 @@ class Odontograma extends Component
         'inferior_permanente' => [['4.8', '4.7', '4.6', '4.5', '4.4', '4.3', '4.2', '4.1'], ['3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8']],
     ];
 
-    public function mount(Evaluacion $evaluacion): void
+    public function mount(Cliente $cliente): void
     {
-        $this->evaluacion = $evaluacion->load('detalles');
+        $this->cliente = $cliente;
+        $this->evaluacion = $cliente->odontograma();
+        $this->cargarDetalles();
+    }
+
+    /** Carga las piezas con su log de condiciones (más reciente primero). */
+    protected function cargarDetalles(): void
+    {
+        $this->evaluacion->load([
+            'detalles.condicionesClinicas' => fn ($q) => $q
+                ->orderByDesc('detectada_en')
+                ->orderByDesc('id'),
+        ]);
     }
 
     public function seleccionar(string $pieza): void
     {
-        // Solo piezas FDI válidas (el método es invocable desde el navegador)
         if (! in_array($pieza, collect(self::ARCADAS)->flatten()->all(), true)) {
             return;
         }
 
         $this->piezaSeleccionada = $pieza;
+        $this->cancelarNota();
+        $this->cancelarTratamiento();
+    }
 
-        $detalle = $this->evaluacion->detalles->firstWhere('pieza', $pieza);
+    /** Comprueba el permiso y avisa si falta. */
+    protected function autoriza(): bool
+    {
+        if (auth()->user()?->can('update', $this->evaluacion)) {
+            return true;
+        }
 
-        $mapa = self::mapaCondiciones($detalle?->condiciones);
+        Notification::make()
+            ->title('Sin permiso para editar el odontograma')
+            ->danger()
+            ->send();
 
-        $this->condiciones = array_keys($mapa);
-        $this->tratadas = array_keys(array_filter($mapa));
-        $this->diagnostico = $detalle->diagnostico ?? '';
-        $this->hecho = (bool) ($detalle->hecho ?? false);
+        return false;
     }
 
     /**
-     * Normaliza condiciones a mapa clave => tratada(bool).
-     * Acepta el formato lista viejo (["caries"]) por compatibilidad.
+     * Registra una condición en la pieza seleccionada con un solo clic:
+     * queda pendiente y detectada hoy. La nota y el "tratada" se ajustan
+     * después por fila. Permite repetir la misma condición (recurrencia).
      */
-    public static function mapaCondiciones(?array $condiciones): array
+    public function agregarCondicion(string $condicion): void
     {
-        if (blank($condiciones)) {
-            return [];
-        }
-
-        if (array_is_list($condiciones)) {
-            return array_fill_keys($condiciones, false);
-        }
-
-        return array_map(fn ($v) => (bool) $v, $condiciones);
-    }
-
-    public function guardar(): void
-    {
-        if (! $this->piezaSeleccionada) {
+        if (! $this->piezaSeleccionada || ! $this->autoriza()) {
             return;
         }
 
-        if (! auth()->user()?->can('update', $this->evaluacion)) {
-            Notification::make()
-                ->title('Sin permiso para editar el odontograma')
-                ->danger()
-                ->send();
-
+        // Solo condiciones del catálogo (defense in depth: el valor llega del navegador).
+        if (! array_key_exists($condicion, EvaluacionDetalle::CONDICIONES)) {
             return;
         }
 
-        $diagnostico = trim($this->diagnostico);
+        $detalle = $this->evaluacion->detalles()->firstOrCreate(
+            ['pieza' => $this->piezaSeleccionada],
+        );
 
-        // Mapa condición => tratada, solo claves del catálogo
-        $mapa = collect($this->condiciones)
-            ->filter(fn ($c) => array_key_exists($c, \App\Models\EvaluacionDetalle::CONDICIONES))
-            ->unique()
-            ->mapWithKeys(fn ($c) => [$c => in_array($c, $this->tratadas, true)])
-            ->all();
+        $detalle->condicionesClinicas()->create([
+            'condicion'    => $condicion,
+            'tratada'      => false,
+            'detectada_en' => now()->toDateString(),
+        ]);
 
-        if ($mapa === [] && $diagnostico === '') {
-            // Sin condiciones ni nota = pieza sana: se elimina el registro
-            $this->evaluacion->detalles()
-                ->where('pieza', $this->piezaSeleccionada)
-                ->delete();
-        } else {
-            // 'hecho' (pieza completa) se deriva: todas las condiciones tratadas.
-            // Si solo hay nota libre, manda el checkbox global.
-            $hechoPieza = $mapa !== []
-                ? ! in_array(false, $mapa, true)
-                : $this->hecho;
-
-            $this->evaluacion->detalles()->updateOrCreate(
-                ['pieza' => $this->piezaSeleccionada],
-                ['condiciones' => $mapa ?: null, 'diagnostico' => $diagnostico ?: null, 'hecho' => $hechoPieza],
-            );
-        }
-
-        $this->evaluacion->refresh()->load('detalles');
+        $this->cargarDetalles();
 
         Notification::make()
-            ->title("Pieza {$this->piezaSeleccionada} actualizada")
+            ->title($this->etiquetaCondicion($condicion) . " agregada a la pieza {$this->piezaSeleccionada}")
             ->success()
             ->send();
     }
 
-    /** Estado visual de una pieza: vacio | pendiente | hecho. */
-    public function estadoDe(string $pieza): string
+    public function alternarTratada(int $condicionId): void
+    {
+        if (! $this->autoriza()) {
+            return;
+        }
+
+        $condicion = $this->condicionPropia($condicionId);
+
+        if (! $condicion) {
+            return;
+        }
+
+        $tratada = ! $condicion->tratada;
+
+        $condicion->update([
+            'tratada'          => $tratada,
+            'tratada_en'       => $tratada ? now()->toDateString() : null,
+            // Al volver a pendiente, el detalle del tratamiento ya no aplica.
+            'nota_tratamiento' => $tratada ? $condicion->nota_tratamiento : null,
+        ]);
+
+        $this->cargarDetalles();
+    }
+
+    /** Abre el form para marcar tratada con una nota de tratamiento opcional. */
+    public function iniciarTratamiento(int $condicionId): void
+    {
+        if (! $this->autoriza()) {
+            return;
+        }
+
+        $condicion = $this->condicionPropia($condicionId);
+
+        if (! $condicion) {
+            return;
+        }
+
+        $this->cancelarNota();
+        $this->tratandoId = $condicion->id;
+        $this->notaTratamiento = (string) $condicion->nota_tratamiento;
+    }
+
+    public function confirmarTratamiento(): void
+    {
+        if (! $this->tratandoId || ! $this->autoriza()) {
+            return;
+        }
+
+        $this->validate(['notaTratamiento' => ['nullable', 'string', 'max:1000']]);
+
+        $this->condicionPropia($this->tratandoId)?->update([
+            'tratada'          => true,
+            'tratada_en'       => now()->toDateString(),
+            'nota_tratamiento' => trim($this->notaTratamiento) ?: null,
+        ]);
+
+        $this->cancelarTratamiento();
+        $this->cargarDetalles();
+    }
+
+    public function cancelarTratamiento(): void
+    {
+        $this->tratandoId = null;
+        $this->notaTratamiento = '';
+        $this->resetValidation();
+    }
+
+    /** Abre la edición inline de la nota de una condición. */
+    public function editarNota(int $condicionId): void
+    {
+        if (! $this->autoriza()) {
+            return;
+        }
+
+        $condicion = $this->condicionPropia($condicionId);
+
+        if (! $condicion) {
+            return;
+        }
+
+        $this->cancelarTratamiento();
+        $this->editandoId = $condicion->id;
+        $this->editNota = (string) $condicion->nota;
+    }
+
+    public function guardarNota(): void
+    {
+        if (! $this->editandoId || ! $this->autoriza()) {
+            return;
+        }
+
+        $this->validate(['editNota' => ['nullable', 'string', 'max:1000']]);
+
+        $this->condicionPropia($this->editandoId)?->update([
+            'nota' => trim($this->editNota) ?: null,
+        ]);
+
+        $this->cancelarNota();
+        $this->cargarDetalles();
+    }
+
+    public function cancelarNota(): void
+    {
+        $this->editandoId = null;
+        $this->editNota = '';
+        $this->resetValidation();
+    }
+
+    public function eliminarCondicion(int $condicionId): void
+    {
+        if (! $this->autoriza()) {
+            return;
+        }
+
+        // Soft delete: el registro clínico se archiva, no se destruye.
+        $this->condicionPropia($condicionId)?->delete();
+
+        $this->cargarDetalles();
+    }
+
+    /**
+     * Recupera una condición SOLO si pertenece al odontograma de este
+     * paciente. Defense in depth: no confiar en el id que llega del navegador.
+     */
+    protected function condicionPropia(int $condicionId): ?EvaluacionDetalleCondicion
+    {
+        return EvaluacionDetalleCondicion::query()
+            ->whereHas('detalle', fn ($q) => $q->where('evaluacion_id', $this->evaluacion->id))
+            ->find($condicionId);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Helpers de lectura para el chart (derivan del log de condiciones)
+    // ──────────────────────────────────────────────────────────────────
+
+    /** Filas de condiciones de una pieza (colección, ya cargada). */
+    public function condicionesRowsDe(string $pieza): Collection
     {
         $detalle = $this->evaluacion->detalles->firstWhere('pieza', $pieza);
 
-        if (! $detalle || (blank($detalle->diagnostico) && blank($detalle->condiciones))) {
+        return $detalle?->condicionesClinicas ?? collect();
+    }
+
+    /** @return array<string> Condiciones presentes en la pieza (distintas). */
+    public function condicionesDe(string $pieza): array
+    {
+        return $this->condicionesRowsDe($pieza)
+            ->pluck('condicion')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string> Condiciones cuyas ocurrencias están todas tratadas. */
+    public function tratadasDe(string $pieza): array
+    {
+        return $this->condicionesRowsDe($pieza)
+            ->groupBy('condicion')
+            ->filter(fn (Collection $rows) => $rows->every(fn ($r) => $r->tratada))
+            ->keys()
+            ->all();
+    }
+
+    /** Estado visual de la pieza: vacio | pendiente | hecho. */
+    public function estadoDe(string $pieza): string
+    {
+        $rows = $this->condicionesRowsDe($pieza);
+
+        if ($rows->isEmpty()) {
             return 'vacio';
         }
 
-        return $detalle->hecho ? 'hecho' : 'pendiente';
+        return $rows->every(fn ($r) => $r->tratada) ? 'hecho' : 'pendiente';
     }
 
+    /** Notas de la pieza concatenadas (para el tooltip del diente). */
     public function diagnosticoDe(string $pieza): ?string
     {
-        return $this->evaluacion->detalles->firstWhere('pieza', $pieza)?->diagnostico;
-    }
+        $notas = $this->condicionesRowsDe($pieza)
+            ->pluck('nota')
+            ->filter()
+            ->unique()
+            ->values();
 
-    /** @return array<string> Claves de las condiciones de la pieza. */
-    public function condicionesDe(string $pieza): array
-    {
-        return array_keys(self::mapaCondiciones(
-            $this->evaluacion->detalles->firstWhere('pieza', $pieza)?->condiciones
-        ));
-    }
-
-    /** @return array<string> Condiciones de la pieza ya tratadas. */
-    public function tratadasDe(string $pieza): array
-    {
-        return array_keys(array_filter(self::mapaCondiciones(
-            $this->evaluacion->detalles->firstWhere('pieza', $pieza)?->condiciones
-        )));
+        return $notas->isEmpty() ? null : $notas->implode(' · ');
     }
 
     public function tieneCondicion(string $pieza, string $condicion): bool
@@ -168,34 +318,35 @@ class Odontograma extends Component
         return in_array($condicion, $this->condicionesDe($pieza), true);
     }
 
-    /**
-     * Color principal de la corona: la primera condición con color
-     * (ausente no pinta). Las demás se muestran como puntos.
-     */
+    /** Color principal de la corona: primera condición con color. */
     public function colorDe(string $pieza): ?string
     {
         foreach ($this->condicionesDe($pieza) as $condicion) {
-            $color = \App\Models\EvaluacionDetalle::CONDICIONES[$condicion]['color'] ?? null;
+            $color = EvaluacionDetalle::CONDICIONES[$condicion]['color'] ?? null;
 
             if ($color !== null) {
                 return $color;
             }
         }
 
-        $detalle = $this->evaluacion->detalles->firstWhere('pieza', $pieza);
-
-        return blank($detalle?->diagnostico) ? null : '#f59e0b'; // solo nota libre
+        return null;
     }
 
-    /** Colores secundarios (condiciones adicionales) para los puntos bajo el diente. */
+    /** Colores secundarios (condiciones adicionales) para los puntos. */
     public function coloresExtraDe(string $pieza): array
     {
-        $colores = collect($this->condicionesDe($pieza))
-            ->map(fn ($c) => \App\Models\EvaluacionDetalle::CONDICIONES[$c]['color'] ?? null)
+        return collect($this->condicionesDe($pieza))
+            ->map(fn ($c) => EvaluacionDetalle::CONDICIONES[$c]['color'] ?? null)
             ->filter()
-            ->values();
+            ->values()
+            ->slice(1, 3)
+            ->all();
+    }
 
-        return $colores->slice(1, 3)->all();
+    /** Etiqueta legible de una condición. */
+    public function etiquetaCondicion(string $condicion): string
+    {
+        return EvaluacionDetalle::CONDICIONES[$condicion]['label'] ?? $condicion;
     }
 
     /** Tipo anatómico según posición FDI: incisivo | canino | premolar | molar. */
@@ -216,6 +367,12 @@ class Odontograma extends Component
     public function getPuedeEditarProperty(): bool
     {
         return auth()->user()?->can('update', $this->evaluacion) ?? false;
+    }
+
+    /** Catálogo de condiciones para los chips del formulario. */
+    public function getCatalogoCondicionesProperty(): array
+    {
+        return EvaluacionDetalle::CONDICIONES;
     }
 
     public function render()

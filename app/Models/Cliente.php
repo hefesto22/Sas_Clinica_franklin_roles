@@ -66,4 +66,20 @@ class Cliente extends Model
         return $this->hasMany(Evaluacion::class)->latest('fecha');
         // o simplemente: return $this->hasMany(Evaluacion::class);
     }
+
+    /**
+     * Odontograma único del paciente.
+     *
+     * Decisión de negocio (2026-06-15): un solo odontograma por paciente que
+     * acumula los tratamientos en el tiempo. Devuelve la Evaluacion existente
+     * o crea una si el paciente aún no tiene. El historial por pieza vive en
+     * las filas de EvaluacionDetalleCondicion colgando de esta evaluación.
+     */
+    public function odontograma(): Evaluacion
+    {
+        return $this->evaluaciones()->firstOrCreate(
+            ['cliente_id' => $this->getKey()],
+            ['fecha' => now()->toDateString(), 'user_id' => auth()->id()],
+        );
+    }
 }

@@ -44,4 +44,29 @@ class EvaluacionDetalle extends Model
     {
         return $this->belongsTo(Evaluacion::class);
     }
+
+    /**
+     * Historial de condiciones de la pieza (log normalizado).
+     *
+     * No se llama `condiciones` a propósito: esa clave es la columna JSON
+     * heredada que se mantiene como respaldo durante la transición.
+     */
+    public function condicionesClinicas()
+    {
+        return $this->hasMany(EvaluacionDetalleCondicion::class, 'evaluacion_detalle_id');
+    }
+
+    /**
+     * La pieza está tratada solo si tiene condiciones registradas y todas
+     * están tratadas. Sin condiciones registradas no se considera tratada.
+     */
+    public function getEstaTratadaAttribute(): bool
+    {
+        $condiciones = $this->relationLoaded('condicionesClinicas')
+            ? $this->condicionesClinicas
+            : $this->condicionesClinicas()->get();
+
+        return $condiciones->isNotEmpty()
+            && $condiciones->every(fn (EvaluacionDetalleCondicion $c) => $c->tratada);
+    }
 }

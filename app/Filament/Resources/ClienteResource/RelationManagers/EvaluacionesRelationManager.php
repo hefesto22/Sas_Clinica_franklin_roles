@@ -214,9 +214,11 @@ class EvaluacionesRelationManager extends RelationManager
                     ->label('Odontograma')
                     ->icon('heroicon-o-face-smile')
                     ->color('info')
-                    ->modalHeading(fn (Model $record): string => 'Odontograma — ' . \Illuminate\Support\Carbon::parse($record->fecha)->format('d/m/Y'))
+                    ->modalHeading('Odontograma del paciente')
                     ->modalWidth('5xl')
-                    ->modalContent(fn (Model $record) => view('filament.odontograma-modal', ['evaluacion' => $record]))
+                    // Odontograma único por paciente: siempre abre el mismo,
+                    // acumulando el historial de condiciones por pieza.
+                    ->modalContent(fn (Model $record) => view('filament.odontograma-modal', ['cliente' => $record->cliente]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar'),
 
