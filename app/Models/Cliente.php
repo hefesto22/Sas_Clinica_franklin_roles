@@ -14,9 +14,16 @@ class Cliente extends Model
 
     protected $table = 'clientes';
 
+    /** Tipos de paciente que maneja la clínica. */
+    public const TIPOS = [
+        'general'    => 'General',
+        'ortodoncia' => 'Ortodoncia',
+    ];
+
     protected $fillable = [
         'nombre',
         'dni',
+        'tipo_paciente',
         'telefono',
         'direccion',
         'ocupacion',

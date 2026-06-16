@@ -14,6 +14,7 @@ class ClienteActividad extends Model
         'cliente_id',
         'fecha',
         'actividad',
+        'tipo',
         'pago',
     ];
 

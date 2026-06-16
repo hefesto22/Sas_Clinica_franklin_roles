@@ -15,6 +15,7 @@ class ClienteFactory extends Factory
         return [
             'nombre'           => fake()->name(),
             'dni'              => fake()->unique()->numerify('####-####-#####'),
+            'tipo_paciente'    => fake()->randomElement(['general', 'ortodoncia']),
             'telefono'         => fake()->numerify('9###-####'),
             'direccion'        => fake()->streetAddress(),
             'ocupacion'        => fake()->jobTitle(),

@@ -71,12 +71,36 @@ class ClienteResource extends Resource
 
                     TextInput::make('dni')
                         ->label('DNI')
-                        ->required()
-                        ->unique(ignoreRecord: true)
-                        ->validationMessages([
-                            'unique' => 'Ya existe un paciente con este DNI (revisa también los archivados).',
-                        ])
+                        ->helperText('Opcional: si no lo trae, se deja vacío y se completa luego.')
                         ->maxLength(50)
+                        // Vacío se guarda como NULL (no como texto en blanco),
+                        // para que la unicidad solo aplique a DNIs reales.
+                        ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null)
+                        // Único solo cuando tiene valor; incluye pacientes archivados.
+                        ->rules([
+                            fn (?\Illuminate\Database\Eloquent\Model $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                if (blank($value)) {
+                                    return;
+                                }
+
+                                $existe = \App\Models\Cliente::withTrashed()
+                                    ->where('dni', $value)
+                                    ->when($record, fn ($q) => $q->whereKeyNot($record->getKey()))
+                                    ->exists();
+
+                                if ($existe) {
+                                    $fail('Ya existe un paciente con este DNI (revisa también los archivados).');
+                                }
+                            },
+                        ])
+                        ->columnSpan(3),
+
+                    Select::make('tipo_paciente')
+                        ->label('Tipo de paciente')
+                        ->required()
+                        ->options(\App\Models\Cliente::TIPOS)
+                        ->default('general')
+                        ->native(false)
                         ->columnSpan(3),
 
                     TextInput::make('telefono')
@@ -163,6 +187,14 @@ class ClienteResource extends Resource
                 TextColumn::make('dni')
                     ->label('DNI')
                     ->searchable()
+                    ->sortable()
+                    ->placeholder('Sin DNI'),
+
+                TextColumn::make('tipo_paciente')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => \App\Models\Cliente::TIPOS[$state] ?? $state)
+                    ->color(fn (?string $state) => $state === 'ortodoncia' ? 'info' : 'gray')
                     ->sortable(),
 
                 TextColumn::make('telefono')
@@ -188,6 +220,9 @@ class ClienteResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                SelectFilter::make('tipo_paciente')
+                    ->label('Tipo de paciente')
+                    ->options(\App\Models\Cliente::TIPOS),
                 SelectFilter::make('estado')
                     ->options([
                         'activo' => 'Activo',

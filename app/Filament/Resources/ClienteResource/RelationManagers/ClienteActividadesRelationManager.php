@@ -4,9 +4,12 @@ namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use App\Models\Cliente;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
@@ -32,6 +35,14 @@ class ClienteActividadesRelationManager extends RelationManager
                 ->native(false)
                 ->closeOnDateSelection(),
 
+            Select::make('tipo')
+                ->label('Tipo')
+                ->options(Cliente::TIPOS)
+                // Presugiere el tipo del paciente; igual se puede cambiar o dejar vacío.
+                ->default(fn () => $this->getOwnerRecord()?->tipo_paciente)
+                ->native(false)
+                ->placeholder('Sin especificar'),
+
             Textarea::make('actividad')
                 ->label('Actividad')
                 ->rows(3)                 // alto pequeño
@@ -44,9 +55,12 @@ class ClienteActividadesRelationManager extends RelationManager
 
             TextInput::make('pago')
                 ->label('Pago')
+                ->helperText('Opcional: se puede dejar vacío.')
                 ->numeric()
                 ->prefix('$')
-                ->nullable(),
+                ->nullable()
+                // Vacío se guarda como NULL (no como 0).
+                ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null),
         ]);
     }
 
@@ -59,6 +73,12 @@ class ClienteActividadesRelationManager extends RelationManager
                     ->date()
                     ->sortable(),
 
+                TextColumn::make('tipo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => Cliente::TIPOS[$state] ?? '—')
+                    ->color(fn (?string $state) => $state === 'ortodoncia' ? 'info' : 'gray'),
+
                 TextColumn::make('actividad')
                     ->label('Actividad')
                     ->wrap()                 // permite salto de línea
@@ -69,12 +89,18 @@ class ClienteActividadesRelationManager extends RelationManager
                 TextColumn::make('pago')
                     ->label('Pago')
                     ->money('USD', true) // muestra con formato de dinero
+                    ->placeholder('Sin pago') // actividades sin cobro
                     ->sortable(),
 
                 TextColumn::make('created_at')
                     ->label('Registrado')
                     ->since()
                     ->sortable(),
+            ])
+            ->filters([
+                SelectFilter::make('tipo')
+                    ->label('Tipo')
+                    ->options(Cliente::TIPOS),
             ])
             ->headerActions([
                 CreateAction::make(),

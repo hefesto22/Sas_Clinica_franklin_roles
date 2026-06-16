@@ -16,6 +16,7 @@ class ClienteActividadFactory extends Factory
             'cliente_id' => Cliente::factory(),
             'fecha'      => fake()->dateTimeBetween('-6 months', 'now')->format('Y-m-d'),
             'actividad'  => fake()->sentence(4),
+            'tipo'       => fake()->randomElement(['general', 'ortodoncia']),
             'pago'       => fake()->randomFloat(2, 100, 3000),
         ];
     }
