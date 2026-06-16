@@ -18,12 +18,20 @@ class ClienteNota extends Model
         'cliente_id',
         'contenido',
         'leida',
+        'hecha_en',
         'created_by',
     ];
 
     protected $casts = [
-        'leida' => 'boolean',
+        'leida'    => 'boolean',
+        'hecha_en' => 'datetime',
     ];
+
+    /** La nota es una tarea resuelta si tiene fecha de "hecha". */
+    public function getEstaHechaAttribute(): bool
+    {
+        return filled($this->hecha_en);
+    }
     protected static function booted(): void
     {
         static::creating(function (ClienteNota $nota) {

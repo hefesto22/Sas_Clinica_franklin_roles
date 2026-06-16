@@ -4,19 +4,19 @@ namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Support\Enums\FontWeight;
 use Filament\Actions\CreateAction;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 class ClienteNotasRelationManager extends RelationManager
@@ -25,68 +25,119 @@ class ClienteNotasRelationManager extends RelationManager
     protected static ?string $title = 'Notas rápidas';
     protected static ?string $recordTitleAttribute = 'contenido';
 
+    /**
+     * Badge con el número de notas PENDIENTES (no hechas) en la pestaña:
+     * así, al abrir el paciente, lo que falta hacer está siempre a la vista.
+     */
+    public static function getBadge(Model $ownerRecord, string $pageClass): ?string
+    {
+        $pendientes = $ownerRecord->notas()->whereNull('hecha_en')->count();
+
+        return $pendientes > 0 ? (string) $pendientes : null;
+    }
+
+    public static function getBadgeColor(Model $ownerRecord, string $pageClass): ?string
+    {
+        return 'warning';
+    }
+
+    public static function getBadgeTooltip(Model $ownerRecord, string $pageClass): ?string
+    {
+        return 'Notas pendientes';
+    }
+
     public function form(Schema $schema): Schema
     {
+        // Alta rápida: un solo campo. La nota nace "sin leer".
         return $schema->components([
             Textarea::make('contenido')
                 ->label('Nota')
                 ->rows(4)
-                ->required(),
-
-            Toggle::make('leida')
-                ->label('¿Leída?')
-                ->default(false),
+                ->required()
+                ->placeholder('Escribí la nota del paciente…')
+                ->columnSpanFull(),
         ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
+            // Pendientes primero; las hechas al fondo. Dentro, lo más reciente arriba.
+            ->modifyQueryUsing(fn ($query) => $query->orderByRaw('hecha_en is not null')->orderByDesc('created_at'))
             ->columns([
-                TextColumn::make('contenido')
-                    ->label('Nota')
-                    ->limit(50)
-                    ->tooltip(fn($record) => $record->contenido)
-                    ->wrap()
-                    ->searchable(),
+                Stack::make([
+                    Split::make([
+                        TextColumn::make('hecha_en')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => $state ? 'Hecha · ' . $state->format('d/m/Y') : 'Pendiente')
+                            ->color(fn ($state) => $state ? 'success' : 'warning')
+                            ->icon(fn ($state) => $state ? 'heroicon-m-check-circle' : 'heroicon-m-bell-alert')
+                            ->grow(false),
 
-                IconColumn::make('leida')
-                    ->label('Leída')
-                    ->boolean(),
+                        TextColumn::make('created_at')
+                            ->since()
+                            ->color('gray')
+                            ->alignEnd(),
+                    ]),
 
-                TextColumn::make('creador.name')
-                    ->label('Creado por')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('contenido')
+                        ->weight(FontWeight::Medium)
+                        ->wrap()
+                        ->lineClamp(4) // notas largas: máx 4 líneas, el resto en el tooltip
+                        ->tooltip(fn ($record) => $record->contenido)
+                        // Corta palabras larguísimas sin espacios para que no desborden la tarjeta.
+                        ->extraAttributes(['style' => 'word-break: break-word; overflow-wrap: anywhere;'])
+                        ->color(fn ($record) => $record->hecha_en ? 'gray' : null)
+                        ->searchable(),
 
-                TextColumn::make('created_at')
-                    ->label('Creada')
-                    ->since()
-                    ->sortable(),
+                    TextColumn::make('creador.name')
+                        ->label('')
+                        ->prefix('Por ')
+                        ->icon('heroicon-m-user')
+                        ->color('gray')
+                        ->placeholder('—'),
+                ])->space(2),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->contentGrid(['default' => 1, 'md' => 2])
             ->headerActions([
-                CreateAction::make(),
+                CreateAction::make()
+                    ->label('Nueva nota')
+                    ->icon('heroicon-m-plus')
+                    ->modalHeading('Nueva nota rápida'),
             ])
             ->recordActions([
-                Action::make('mark_read')
-                    ->label('Marcar como leída')
-                    ->icon('heroicon-o-check-circle')
+                Action::make('marcar_hecha')
+                    ->label('Marcar hecha')
+                    ->icon('heroicon-m-check-circle')
                     ->color('success')
-                    ->visible(fn($record) => ! $record->leida)
-                    ->action(fn($record) => $record->update(['leida' => true])),
-                EditAction::make(),
-                DeleteAction::make(),
+                    ->visible(fn (Model $record) => blank($record->hecha_en))
+                    ->action(fn (Model $record) => $record->update(['hecha_en' => now()])),
+
+                Action::make('reabrir')
+                    ->label('Reabrir')
+                    ->icon('heroicon-m-arrow-uturn-left')
+                    ->color('warning')
+                    ->visible(fn (Model $record) => filled($record->hecha_en))
+                    ->action(fn (Model $record) => $record->update(['hecha_en' => null])),
+
+                EditAction::make()->iconButton()->icon('heroicon-m-pencil-square'),
+                DeleteAction::make()->iconButton()->icon('heroicon-m-trash'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('Sin notas todavía')
+            ->emptyStateDescription('Agregá una nota rápida para tener presente lo importante del paciente.')
+            ->emptyStateIcon('heroicon-o-bell-alert');
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['created_by'] = Auth::id();
+        $data['leida'] = false; // toda nota nueva nace sin leer
+
         return $data;
     }
 }

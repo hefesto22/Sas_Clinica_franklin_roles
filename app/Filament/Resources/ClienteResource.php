@@ -11,6 +11,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
@@ -178,11 +180,32 @@ class ClienteResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // Conteo de notas PENDIENTES (no hechas) por paciente (badge de la lista).
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount([
+                'notas as notas_pendientes_count' => fn (Builder $q) => $q->whereNull('hecha_en'),
+            ]))
             ->columns([
                 TextColumn::make('nombre')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('notas_pendientes_count')
+                    ->label('Notas')
+                    ->badge()
+                    ->color('warning')
+                    ->icon('heroicon-m-bell-alert')
+                    // Solo muestra el badge si hay notas sin leer; si no, queda vacío.
+                    ->formatStateUsing(fn (int $state): ?string => $state > 0 ? (string) $state : null)
+                    ->placeholder('—')
+                    ->tooltip('Notas pendientes — clic para previsualizar')
+                    ->action(
+                        Action::make('previsualizarNotas')
+                            ->modalHeading(fn (Cliente $record) => 'Notas de ' . $record->nombre)
+                            ->modalContent(fn (Cliente $record) => view('filament.cliente-notas-preview', ['cliente' => $record]))
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Cerrar'),
+                    ),
 
                 TextColumn::make('dni')
                     ->label('DNI')
@@ -220,6 +243,9 @@ class ClienteResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Filter::make('notas_pendientes')
+                    ->label('Con notas pendientes')
+                    ->query(fn (Builder $query) => $query->whereHas('notas', fn (Builder $q) => $q->whereNull('hecha_en'))),
                 SelectFilter::make('tipo_paciente')
                     ->label('Tipo de paciente')
                     ->options(\App\Models\Cliente::TIPOS),
@@ -265,9 +291,10 @@ class ClienteResource extends Resource
     public static function getRelations(): array
     {
         return [
+            // Notas primero: lo que hay que tener presente del paciente.
+            ClienteNotasRelationManager::class,
             ClienteActividadesRelationManager::class,
             ClienteImagenesRelationManager::class,
-            ClienteNotasRelationManager::class,
             EvaluacionesRelationManager::class,
         ];
     }

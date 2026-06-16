@@ -25,4 +25,10 @@ class ClienteNotaFactory extends Factory
     {
         return $this->state(fn () => ['leida' => true]);
     }
+
+    /** Nota ya resuelta (tarea hecha). */
+    public function hecha(): static
+    {
+        return $this->state(fn () => ['hecha_en' => now()]);
+    }
 }
