@@ -69,6 +69,38 @@ class ClienteResource extends Resource
                         ->required()
                         ->maxLength(255)
                         ->autofocus()
+                        ->helperText('No se permite repetir un nombre exactamente igual. Para distinguir personas con el mismo nombre, agregá el segundo nombre o apellido.')
+                        // Normaliza espacios (trim + colapsa espacios internos) al guardar.
+                        ->dehydrateStateUsing(fn ($state) => preg_replace('/\s+/', ' ', trim((string) $state)))
+                        // Bloquea nombres EXACTAMENTE iguales (sin distinguir mayúsculas/acentos,
+                        // por la collation utf8mb4_unicode_ci); incluye pacientes archivados.
+                        ->rules([
+                            fn (?\Illuminate\Database\Eloquent\Model $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                $normalizado = preg_replace('/\s+/', ' ', trim((string) $value));
+
+                                if ($normalizado === '') {
+                                    return;
+                                }
+
+                                // En edición, si el nombre no cambió, no validar: así no se
+                                // bloquea editar registros viejos con nombres duplicados heredados.
+                                if ($record) {
+                                    $actual = preg_replace('/\s+/', ' ', trim((string) $record->nombre));
+                                    if (mb_strtolower($actual) === mb_strtolower($normalizado)) {
+                                        return;
+                                    }
+                                }
+
+                                $existe = \App\Models\Cliente::withTrashed()
+                                    ->where('nombre', $normalizado)
+                                    ->when($record, fn ($q) => $q->whereKeyNot($record->getKey()))
+                                    ->exists();
+
+                                if ($existe) {
+                                    $fail('Ya existe un paciente con exactamente ese nombre. Si es otra persona, agregá el segundo nombre o apellido para diferenciarlo (revisá también los archivados).');
+                                }
+                            },
+                        ])
                         ->columnSpan(6),
 
                     TextInput::make('dni')

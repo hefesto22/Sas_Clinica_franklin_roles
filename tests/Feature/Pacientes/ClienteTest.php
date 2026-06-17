@@ -46,3 +46,18 @@ it('el tipo de paciente por defecto es general', function () {
 
     expect($cliente->fresh()->tipo_paciente)->toBe('general');
 });
+
+it('detecta un nombre exactamente igual sin distinguir mayúsculas', function () {
+    Cliente::factory()->create(['nombre' => 'Mauricio Cruz']);
+
+    // La collation utf8mb4_unicode_ci hace la comparación case-insensitive.
+    $existe = Cliente::where('nombre', 'mauricio cruz')->exists();
+
+    expect($existe)->toBeTrue();
+});
+
+it('no considera duplicado un nombre distinto aunque comparta partes', function () {
+    Cliente::factory()->create(['nombre' => 'Mauricio Cruz']);
+
+    expect(Cliente::where('nombre', 'Mauricio Orlando Cruz')->exists())->toBeFalse();
+});

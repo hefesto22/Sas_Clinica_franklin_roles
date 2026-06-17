@@ -23,7 +23,7 @@ class ClienteNotasRelationManager extends RelationManager
 {
     protected static string $relationship = 'notas';
     protected static ?string $title = 'Notas rápidas';
-    protected static ?string $recordTitleAttribute = 'contenido';
+    // Sin recordTitleAttribute: evita que el modal use la nota completa como título.
 
     /**
      * Badge con el número de notas PENDIENTES (no hechas) en la pestaña:
@@ -48,12 +48,14 @@ class ClienteNotasRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
-        // Alta rápida: un solo campo. La nota nace "sin leer".
+        // Alta rápida y edición cómoda: el campo crece con el texto.
         return $schema->components([
             Textarea::make('contenido')
                 ->label('Nota')
-                ->rows(4)
+                ->rows(5)
+                ->autosize()
                 ->required()
+                ->maxLength(2000)
                 ->placeholder('Escribí la nota del paciente…')
                 ->columnSpanFull(),
         ]);
@@ -103,7 +105,8 @@ class ClienteNotasRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Nueva nota')
                     ->icon('heroicon-m-plus')
-                    ->modalHeading('Nueva nota rápida'),
+                    ->modalHeading('Nueva nota rápida')
+                    ->modalWidth('lg'),
             ])
             ->recordActions([
                 Action::make('marcar_hecha')
@@ -120,8 +123,16 @@ class ClienteNotasRelationManager extends RelationManager
                     ->visible(fn (Model $record) => filled($record->hecha_en))
                     ->action(fn (Model $record) => $record->update(['hecha_en' => null])),
 
-                EditAction::make()->iconButton()->icon('heroicon-m-pencil-square'),
-                DeleteAction::make()->iconButton()->icon('heroicon-m-trash'),
+                EditAction::make()
+                    ->iconButton()
+                    ->icon('heroicon-m-pencil-square')
+                    ->modalHeading('Editar nota')
+                    ->modalWidth('lg'),
+                DeleteAction::make()
+                    ->iconButton()
+                    ->icon('heroicon-m-trash')
+                    ->modalHeading('Eliminar nota')
+                    ->modalDescription('Esto borra la nota definitivamente. Si la tarea ya se hizo, mejor marcala como "Hecha" para conservar el historial.'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
