@@ -15,16 +15,27 @@ class EvaluacionDetalle extends Model
      * odontograma (paleta estándar de fichas dentales).
      */
     public const CONDICIONES = [
-        'caries'              => ['label' => 'Caries',              'color' => '#ef4444'],
-        'obturacion'          => ['label' => 'Obturación',          'color' => '#3b82f6'],
-        'corona'              => ['label' => 'Corona',              'color' => '#a855f7'],
-        'endodoncia'          => ['label' => 'Endodoncia',          'color' => '#0ea5e9'],
-        'implante'            => ['label' => 'Implante',            'color' => '#64748b'],
-        'sellante'            => ['label' => 'Sellante',            'color' => '#14b8a6'],
-        'fractura'            => ['label' => 'Fractura',            'color' => '#f97316'],
-        'extraccion_indicada' => ['label' => 'Extracción indicada', 'color' => '#dc2626'],
-        'ausente'             => ['label' => 'Ausente',             'color' => null],
-        'otro'                => ['label' => 'Otro',                'color' => '#f59e0b'],
+        'caries'                => ['label' => 'Caries',                'color' => '#ef4444'],
+        'obturacion'            => ['label' => 'Obturación',            'color' => '#3b82f6'],
+        'corona'                => ['label' => 'Corona',                'color' => '#a855f7'],
+        'endodoncia'            => ['label' => 'Endodoncia',            'color' => '#0ea5e9'],
+        'implante'              => ['label' => 'Implante',              'color' => '#64748b'],
+        'sellante'              => ['label' => 'Sellante',              'color' => '#14b8a6'],
+        'carilla'               => ['label' => 'Carilla',               'color' => '#0891b2'],
+        'puente'                => ['label' => 'Puente',                'color' => '#7c3aed'],
+        'protesis_fija'         => ['label' => 'Prótesis fija',         'color' => '#9333ea'],
+        'protesis_removible'    => ['label' => 'Prótesis removible',    'color' => '#c026d3'],
+        'fractura'              => ['label' => 'Fractura',              'color' => '#f97316'],
+        'fractura_radicular'    => ['label' => 'Fractura radicular',    'color' => '#ea580c'],
+        'resto_radicular'       => ['label' => 'Resto radicular',       'color' => '#92400e'],
+        'restauracion_temporal' => ['label' => 'Restauración temporal', 'color' => '#ca8a04'],
+        'movilidad'             => ['label' => 'Movilidad',             'color' => '#db2777'],
+        'recesion_gingival'     => ['label' => 'Recesión gingival',     'color' => '#e11d48'],
+        'diente_en_erupcion'    => ['label' => 'Diente en erupción',    'color' => '#65a30d'],
+        'extraccion_indicada'   => ['label' => 'Extracción indicada',   'color' => '#dc2626'],
+        'exodoncia_realizada'   => ['label' => 'Exodoncia realizada',   'color' => '#7f1d1d'],
+        'ausente'               => ['label' => 'Ausente',               'color' => null],
+        'otro'                  => ['label' => 'Otro',                  'color' => '#f59e0b'],
     ];
 
     protected $fillable = [

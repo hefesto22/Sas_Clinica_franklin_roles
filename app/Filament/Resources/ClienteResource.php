@@ -9,6 +9,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Placeholder;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
@@ -157,6 +158,19 @@ class ClienteResource extends Resource
                         ->label('Fecha de nacimiento')
                         ->native(false)
                         ->closeOnDateSelection()
+                        ->maxDate(now())
+                        ->live()
+                        ->columnSpan(3),
+
+                    Placeholder::make('edad')
+                        ->label('Edad')
+                        ->content(function ($get): string {
+                            $fecha = $get('fecha_nacimiento');
+
+                            return $fecha
+                                ? \Carbon\Carbon::parse($fecha)->age . ' años'
+                                : '—';
+                        })
                         ->columnSpan(3),
                 ]),
             ])->collapsible(),
@@ -257,6 +271,14 @@ class ClienteResource extends Resource
                     ->toggleable()
                     ->placeholder('-'),
 
+                TextColumn::make('edad')
+                    ->label('Edad')
+                    ->state(fn (Cliente $record): ?int => $record->edad)
+                    ->suffix(' años')
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('fecha_nacimiento', $direction === 'asc' ? 'desc' : 'asc'))
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder('—'),
+
                 TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
@@ -290,6 +312,17 @@ class ClienteResource extends Resource
                     ->label('Archivados'),
             ])
             ->recordActions([
+                // Acceso rápido a la ficha clínica (odontograma + hoja). Dato clínico: recepción no lo ve.
+                Action::make('fichaClinica')
+                    ->label('Ficha clínica')
+                    ->icon('heroicon-o-face-smile')
+                    ->color('info')
+                    ->visible(fn (): bool => auth()->user()?->can('viewAny', \App\Models\Evaluacion::class) ?? false)
+                    ->modalHeading(fn (Cliente $record) => 'Ficha clínica — ' . $record->nombre)
+                    ->modalWidth('7xl')
+                    ->modalContent(fn (Cliente $record) => view('filament.ficha-clinica-modal', ['cliente' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make()

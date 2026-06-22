@@ -9,6 +9,20 @@ use Illuminate\Database\QueryException;
  * tipo de paciente (general u ortodoncia).
  */
 
+it('calcula la edad a partir de la fecha de nacimiento', function () {
+    $cliente = Cliente::factory()->create([
+        'fecha_nacimiento' => now()->subYears(30)->subDays(5)->toDateString(),
+    ]);
+
+    expect($cliente->edad)->toBe(30);
+});
+
+it('la edad es null si no hay fecha de nacimiento', function () {
+    $cliente = Cliente::factory()->create(['fecha_nacimiento' => null]);
+
+    expect($cliente->edad)->toBeNull();
+});
+
 it('permite guardar un paciente sin DNI', function () {
     $cliente = Cliente::factory()->create(['dni' => null]);
 

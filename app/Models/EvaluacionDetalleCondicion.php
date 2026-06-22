@@ -23,11 +23,20 @@ class EvaluacionDetalleCondicion extends Model
 
     protected $table = 'evaluacion_detalle_condiciones';
 
+    /** Tamaños/extensión de una condición (ej: obturación 1/2/3). */
+    public const TAMANOS = [
+        'pequena' => 'Pequeña',
+        'mediana' => 'Mediana',
+        'grande'  => 'Grande',
+    ];
+
     protected $fillable = [
         'evaluacion_detalle_id',
+        'origen_evaluacion_id',
         'condicion',
         'nota',
         'nota_tratamiento',
+        'tamano',
         'tratada',
         'detectada_en',
         'tratada_en',
@@ -54,6 +63,12 @@ class EvaluacionDetalleCondicion extends Model
     public function getColorAttribute(): ?string
     {
         return EvaluacionDetalle::CONDICIONES[$this->condicion]['color'] ?? null;
+    }
+
+    /** Etiqueta legible del tamaño (Pequeña/Mediana/Grande), o null. */
+    public function getTamanoLabelAttribute(): ?string
+    {
+        return $this->tamano ? (self::TAMANOS[$this->tamano] ?? $this->tamano) : null;
     }
 
     public function scopePendientes(Builder $query): Builder

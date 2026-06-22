@@ -85,7 +85,10 @@
         .odo-leyenda { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1rem; font-size: 11.5px; margin: .8rem auto .2rem; opacity: .9; max-width: 760px; }
         .odo-leyenda span { display: inline-flex; align-items: center; gap: .3rem; }
         .odo-chip { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid rgb(113 113 122 / .5); display: inline-block; }
-        .odo-panel { max-width: 720px; margin: 1rem auto 0; border: 1px solid rgb(113 113 122 / .35); border-radius: .75rem; padding: 1rem; }
+        .odo-layout { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+        .odo-chart { flex: 1 1 640px; min-width: 0; }
+        .odo-panel-col { flex: 1 1 320px; min-width: 280px; position: sticky; top: .5rem; }
+        .odo-panel { margin: 0; border: 1px solid rgb(113 113 122 / .35); border-radius: .75rem; padding: 1rem; max-height: 76vh; overflow-y: auto; }
         .odo-panel h4 { font-weight: 700; margin-bottom: .6rem; }
         .odo-panel .grid2 { display: grid; grid-template-columns: 220px 1fr; gap: .75rem; align-items: start; }
         .odo-panel select, .odo-panel textarea {
@@ -122,6 +125,8 @@
         };
     @endphp
 
+    <div class="odo-layout">
+    <div class="odo-chart">
     <div class="odo-titulo">Arcada superior</div>
 
     @foreach (['superior_permanente' => false, 'superior_deciduo' => false, 'inferior_deciduo' => true, 'inferior_permanente' => true] as $arcada => $esInferior)
@@ -210,37 +215,42 @@
         @endforeach
         <span><i class="odo-chip" style="background:#16a34a;border-color:#16a34a;color:#fff;font-size:8px;text-align:center;line-height:11px;">✓</i> Tratado</span>
     </div>
+    </div>{{-- /.odo-chart --}}
 
-    {{-- Panel de la pieza seleccionada --}}
+    {{-- Panel de la pieza seleccionada (columna derecha) --}}
+    <div class="odo-panel-col">
     @if ($piezaSeleccionada)
         @php $filas = $this->condicionesRowsDe($piezaSeleccionada); @endphp
         <div class="odo-panel">
             <h4>Pieza {{ $piezaSeleccionada }} — {{ ucfirst($this->tipoDe($piezaSeleccionada)) }}</h4>
 
-            {{-- Agregar condición: chips de color, un clic = registrar --}}
-            @if ($this->puedeEditar)
-                <div style="margin-bottom:1rem;">
-                    <label style="font-size:.8rem; opacity:.8; display:block; margin-bottom:.45rem;">
-                        Agregar condición (un clic en el color)
-                    </label>
-                    <div style="display:flex; flex-wrap:wrap; gap:.4rem;">
-                        @foreach ($this->catalogoCondiciones as $clave => $info)
-                            <button type="button" title="Agregar {{ $info['label'] }}"
-                                wire:click="agregarCondicion('{{ $clave }}')"
-                                wire:loading.attr="disabled"
-                                style="display:inline-flex; align-items:center; gap:.4rem; font-size:.82rem;
-                                       padding:.35rem .7rem; border-radius:.6rem; cursor:pointer; color:inherit;
-                                       background:{{ $info['color'] ? $info['color'].'1a' : 'transparent' }};
-                                       border:1.5px solid {{ $info['color'] ?? 'rgb(113 113 122 / .45)' }};">
-                                @if ($info['color'])
-                                    <i class="odo-chip" style="background: {{ $info['color'] }}cc; border-color: {{ $info['color'] }};"></i>
-                                @else
-                                    <i class="odo-chip" style="border-style: dashed;"></i>
-                                @endif
-                                {{ $info['label'] }}
-                            </button>
-                        @endforeach
+            {{-- Espejo de la hoja: lo que el doctor escribió en la hoja para este diente --}}
+            @if ($this->tieneHoja($piezaSeleccionada))
+                <div style="display:flex; align-items:flex-start; gap:.5rem; margin-bottom:.9rem;
+                            border:1px solid rgb(148 163 184 / .5); border-radius:.55rem; padding:.55rem .75rem;
+                            background:rgb(148 163 184 / .08);">
+                    <span style="font-size:.95rem;">📋</span>
+                    <div style="min-width:0; word-break:break-word;">
+                        <div style="font-size:.72rem; font-weight:700; opacity:.7;">
+                            De la hoja de evaluación
+                            @if ($this->hojaHechoDe($piezaSeleccionada))
+                                <span style="color:#16a34a;">· ✓ Hecho</span>
+                            @endif
+                        </div>
+                        @if ($this->hojaTextoDe($piezaSeleccionada))
+                            <div style="font-size:.86rem; margin-top:.15rem;">{{ $this->hojaTextoDe($piezaSeleccionada) }}</div>
+                        @endif
                     </div>
+                </div>
+            @endif
+
+            {{-- El odontograma es de SEGUIMIENTO: las condiciones se registran
+                 desde la hoja de evaluación (Diagnóstico). Aquí solo se les da
+                 seguimiento: editar nota, marcar tratada, tamaño, archivar. --}}
+            @if ($this->puedeEditar)
+                <div style="font-size:.76rem; opacity:.6; margin-bottom:.8rem;">
+                    Las condiciones se registran desde la <strong>hoja de evaluación</strong> (botón Diagnóstico).
+                    Acá las seguís: editás la nota, marcás si ya se realizó y archivás.
                 </div>
             @endif
 
@@ -310,6 +320,24 @@
                                     Detectada: {{ optional($fila->detectada_en)->format('d/m/Y') ?? '—' }}
                                     @if ($fila->tratada_en) · Tratada: {{ $fila->tratada_en->format('d/m/Y') }} @endif
                                 </div>
+
+                                {{-- Tamaño de la condición (Pequeña / Mediana / Grande) --}}
+                                @if ($this->puedeEditar)
+                                    <div style="display:flex; align-items:center; gap:.3rem; margin-top:.35rem; flex-wrap:wrap;">
+                                        <span style="font-size:.7rem; opacity:.6;">Tamaño:</span>
+                                        @foreach ($this->catalogoTamanos as $clave => $label)
+                                            <button type="button"
+                                                wire:click="cambiarTamano({{ $fila->id }}, {{ $fila->tamano === $clave ? 'null' : "'".$clave."'" }})"
+                                                style="border:1px solid {{ $fila->tamano === $clave ? '#2563eb' : 'rgb(113 113 122 / .4)' }};
+                                                       border-radius:.4rem; padding:.1rem .5rem; font-size:.7rem; cursor:pointer;
+                                                       background:{{ $fila->tamano === $clave ? 'rgb(37 99 235 / .15)' : 'transparent' }}; color:inherit;">
+                                                {{ $label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @elseif ($fila->tamano)
+                                    <div style="font-size:.72rem; opacity:.7; margin-top:.2rem;">Tamaño: {{ $fila->tamano_label }}</div>
+                                @endif
                             @endif
                         </div>
 
@@ -333,12 +361,19 @@
                                     style="border:1px solid rgb(113 113 122 / .4); border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:inherit;">
                                     ✎
                                 </button>
-                                <button type="button" title="Archivar condición"
-                                    wire:click="eliminarCondicion({{ $fila->id }})"
-                                    wire:confirm="¿Archivar esta condición de la pieza {{ $piezaSeleccionada }}?"
-                                    style="border:1px solid #dc2626; border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:#dc2626;">
-                                    🗑
-                                </button>
+                                @if ($fila->tratada)
+                                    <span title="Marcala como no hecha (↩) para poder archivarla"
+                                        style="border:1px solid rgb(113 113 122 / .3); border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; opacity:.4; cursor:not-allowed;">
+                                        🗑
+                                    </span>
+                                @else
+                                    <button type="button" title="Archivar condición"
+                                        wire:click="eliminarCondicion({{ $fila->id }})"
+                                        wire:confirm="¿Archivar esta condición de la pieza {{ $piezaSeleccionada }}?"
+                                        style="border:1px solid #dc2626; border-radius:.4rem; padding:.2rem .5rem; font-size:.78rem; cursor:pointer; background:transparent; color:#dc2626;">
+                                        🗑
+                                    </button>
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -348,8 +383,13 @@
             </div>
         </div>
     @else
-        <p style="text-align:center; font-size:.85rem; opacity:.6; margin-top:.75rem;">
-            Haz clic en un diente para ver y registrar sus condiciones.
-        </p>
+        <div style="border:1px dashed rgb(113 113 122 / .4); border-radius:.75rem; padding:1.5rem 1rem; text-align:center;">
+            <div style="font-size:1.6rem; opacity:.35;">🦷</div>
+            <p style="font-size:.85rem; opacity:.6; margin-top:.4rem;">
+                Haz clic en un diente para ver y registrar sus condiciones.
+            </p>
+        </div>
     @endif
+    </div>{{-- /.odo-panel-col --}}
+    </div>{{-- /.odo-layout --}}
 </div>

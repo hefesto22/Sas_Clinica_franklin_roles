@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,19 @@ class Cliente extends Model
     protected $casts = [
         'fecha_nacimiento' => 'date',
     ];
+
+    /**
+     * Edad del paciente en años, calculada al vuelo desde la fecha de nacimiento.
+     *
+     * No se persiste: si se guardara quedaría desactualizada con el tiempo.
+     * Devuelve null cuando no hay fecha de nacimiento registrada.
+     */
+    protected function edad(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?int => $this->fecha_nacimiento?->age,
+        );
+    }
 
     // Relación con usuario creador
     public function creador(): BelongsTo
@@ -86,6 +100,22 @@ class Cliente extends Model
     {
         return $this->evaluaciones()->firstOrCreate(
             ['es_odontograma' => true],
+            ['fecha' => now()->toDateString(), 'user_id' => auth()->id()],
+        );
+    }
+
+    /**
+     * Hoja de evaluación única del paciente (el "formato de papel" como
+     * documento vivo). Decisión de negocio (2026-06-19): una sola hoja por
+     * paciente, igual que el odontograma. El historial temporal no se pierde:
+     * vive en las fechas (detectada_en / tratada_en) de cada condición.
+     *
+     * Devuelve la hoja existente más reciente o crea una si no hay ninguna.
+     */
+    public function hoja(): Evaluacion
+    {
+        return $this->evaluaciones()->firstOrCreate(
+            ['es_odontograma' => false],
             ['fecha' => now()->toDateString(), 'user_id' => auth()->id()],
         );
     }

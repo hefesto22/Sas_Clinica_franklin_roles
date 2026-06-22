@@ -41,6 +41,12 @@ class Odontograma extends Component
 
     public string $notaTratamiento = '';
 
+    /**
+     * Espejo de la hoja: lo que el doctor escribió por diente en la(s)
+     * hoja(s) de evaluación. pieza => ['texto' => ..., 'hecho' => bool].
+     */
+    public array $hoja = [];
+
     /** Arcadas en orden visual (notación FDI con punto, como guarda la BD). */
     public const ARCADAS = [
         'superior_permanente' => [['1.8', '1.7', '1.6', '1.5', '1.4', '1.3', '1.2', '1.1'], ['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8']],
@@ -64,6 +70,46 @@ class Odontograma extends Component
                 ->orderByDesc('detectada_en')
                 ->orderByDesc('id'),
         ]);
+
+        $this->cargarHoja();
+    }
+
+    /**
+     * Trae lo escrito en las HOJAS de evaluación del paciente (formato hoja,
+     * texto por diente) para reflejarlo en el odontograma. Toma lo último
+     * registrado por pieza. Excluye la evaluación dedicada al odontograma.
+     */
+    protected function cargarHoja(): void
+    {
+        $this->hoja = EvaluacionDetalle::query()
+            ->whereHas('evaluacion', fn ($q) => $q
+                ->where('cliente_id', $this->cliente->getKey())
+                ->where('es_odontograma', false))
+            ->whereNotNull('diagnostico')
+            ->where('diagnostico', '!=', '')
+            ->orderBy('id')
+            ->get(['pieza', 'diagnostico', 'hecho'])
+            ->groupBy('pieza')
+            ->map(fn ($rows) => [
+                'texto' => $rows->last()->diagnostico,
+                'hecho' => (bool) $rows->last()->hecho,
+            ])
+            ->all();
+    }
+
+    public function hojaTextoDe(string $pieza): ?string
+    {
+        return $this->hoja[$pieza]['texto'] ?? null;
+    }
+
+    public function hojaHechoDe(string $pieza): bool
+    {
+        return (bool) ($this->hoja[$pieza]['hecho'] ?? false);
+    }
+
+    public function tieneHoja(string $pieza): bool
+    {
+        return isset($this->hoja[$pieza]);
     }
 
     public function seleccionar(string $pieza): void
@@ -193,6 +239,28 @@ class Odontograma extends Component
         $this->resetValidation();
     }
 
+    /** Fija (o limpia) el tamaño de una condición: pequena | mediana | grande | null. */
+    public function cambiarTamano(int $condicionId, ?string $tamano): void
+    {
+        if (! $this->autoriza()) {
+            return;
+        }
+
+        if ($tamano !== null && ! array_key_exists($tamano, EvaluacionDetalleCondicion::TAMANOS)) {
+            return;
+        }
+
+        $this->condicionPropia($condicionId)?->update(['tamano' => $tamano]);
+
+        $this->cargarDetalles();
+    }
+
+    /** Catálogo de tamaños para los botones del panel. */
+    public function getCatalogoTamanosProperty(): array
+    {
+        return EvaluacionDetalleCondicion::TAMANOS;
+    }
+
     /** Abre la edición inline de la nota de una condición. */
     public function editarNota(int $condicionId): void
     {
@@ -240,8 +308,26 @@ class Odontograma extends Component
             return;
         }
 
+        $condicion = $this->condicionPropia($condicionId);
+
+        if (! $condicion) {
+            return;
+        }
+
+        // Una condición ya tratada es historia clínica: no se archiva mientras
+        // siga marcada como hecha. Hay que volverla a pendiente primero.
+        if ($condicion->tratada) {
+            Notification::make()
+                ->title('No se puede archivar una condición ya hecha')
+                ->body('Primero marcala como no hecha y luego podés archivarla.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         // Soft delete: el registro clínico se archiva, no se destruye.
-        $this->condicionPropia($condicionId)?->delete();
+        $condicion->delete();
 
         $this->cargarDetalles();
     }
@@ -266,7 +352,10 @@ class Odontograma extends Component
     {
         $detalle = $this->evaluacion->detalles->firstWhere('pieza', $pieza);
 
-        return $detalle?->condicionesClinicas ?? collect();
+        // Pendientes primero, tratadas al final (orden estable: mantiene el id dentro de cada grupo).
+        return ($detalle?->condicionesClinicas ?? collect())
+            ->sortBy(fn ($c) => $c->tratada ? 1 : 0)
+            ->values();
     }
 
     /** @return array<string> Condiciones presentes en la pieza (distintas). */
@@ -293,24 +382,34 @@ class Odontograma extends Component
     public function estadoDe(string $pieza): string
     {
         $rows = $this->condicionesRowsDe($pieza);
+        $tieneHoja = $this->tieneHoja($pieza);
 
-        if ($rows->isEmpty()) {
+        if ($rows->isEmpty() && ! $tieneHoja) {
             return 'vacio';
         }
 
-        return $rows->every(fn ($r) => $r->tratada) ? 'hecho' : 'pendiente';
+        $condicionesHechas = $rows->isEmpty() || $rows->every(fn ($r) => $r->tratada);
+        $hojaHecha = ! $tieneHoja || $this->hojaHechoDe($pieza);
+
+        return ($condicionesHechas && $hojaHecha) ? 'hecho' : 'pendiente';
     }
 
-    /** Notas de la pieza concatenadas (para el tooltip del diente). */
+    /** Notas de la pieza para el tooltip: lo de la hoja + las notas de condiciones. */
     public function diagnosticoDe(string $pieza): ?string
     {
-        $notas = $this->condicionesRowsDe($pieza)
+        $partes = collect();
+
+        if ($texto = $this->hojaTextoDe($pieza)) {
+            $partes->push('Hoja: ' . $texto);
+        }
+
+        $this->condicionesRowsDe($pieza)
             ->pluck('nota')
             ->filter()
             ->unique()
-            ->values();
+            ->each(fn ($n) => $partes->push($n));
 
-        return $notas->isEmpty() ? null : $notas->implode(' · ');
+        return $partes->isEmpty() ? null : $partes->implode(' · ');
     }
 
     public function tieneCondicion(string $pieza, string $condicion): bool
@@ -329,7 +428,8 @@ class Odontograma extends Component
             }
         }
 
-        return null;
+        // Sin condición, pero con texto en la hoja: marca neutra (slate).
+        return $this->tieneHoja($pieza) ? '#94a3b8' : null;
     }
 
     /** Colores secundarios (condiciones adicionales) para los puntos. */
