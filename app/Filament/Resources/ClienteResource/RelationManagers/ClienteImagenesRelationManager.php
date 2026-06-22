@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ClienteResource\RelationManagers;
 
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\FileUpload;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\CreateAction;
@@ -27,17 +28,79 @@ class ClienteImagenesRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
+        $cliente = $this->getOwnerRecord();
+
         return $schema->components([
             FileUpload::make('path')
                 ->label('Imagen')
                 ->image()
-                ->directory('clientes')   // storage/app/public/clientes
                 ->disk('public')
                 ->visibility('public')
-                ->preserveFilenames()
                 ->imageEditor()
+                // Cada imagen se guarda con un nombre único en la carpeta del
+                // paciente y se convierte a WebP (ahorra espacio). Si la
+                // conversión no es posible, guarda la original con nombre único:
+                // así NUNCA se pisan imágenes entre expedientes.
+                ->saveUploadedFileUsing(fn (TemporaryUploadedFile $file): string =>
+                    $this->guardarComoWebp($file, $cliente->getKey()))
                 ->required(),
         ])->columns(1);
+    }
+
+    /**
+     * Guarda la imagen subida como WebP en clientes/{clienteId}/ con nombre
+     * único. Corrige la orientación EXIF (fotos de teléfono salen rotadas).
+     * Si GD/WebP no está disponible o algo falla, guarda la original con
+     * nombre único — nunca colisiona con otro expediente.
+     */
+    protected function guardarComoWebp(TemporaryUploadedFile $file, int $clienteId): string
+    {
+        $directorio = "clientes/{$clienteId}";
+        $nombre     = 'img_' . now()->format('Ymd_His') . '_' . uniqid();
+
+        try {
+            if (function_exists('imagewebp')) {
+                $imagen = @imagecreatefromstring(file_get_contents($file->getRealPath()));
+
+                if ($imagen !== false) {
+                    $imagen = $this->corregirOrientacion($imagen, $file->getRealPath());
+
+                    ob_start();
+                    imagewebp($imagen, null, 80);
+                    $contenido = ob_get_clean();
+                    imagedestroy($imagen);
+
+                    $ruta = "{$directorio}/{$nombre}.webp";
+                    Storage::disk('public')->put($ruta, $contenido);
+
+                    return $ruta;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Cae al fallback: guardar la original con nombre único.
+        }
+
+        $extension = $file->getClientOriginalExtension() ?: 'jpg';
+
+        return $file->storeAs($directorio, "{$nombre}.{$extension}", 'public');
+    }
+
+    /** Rota la imagen según la orientación EXIF (solo afecta JPEG de cámara). */
+    protected function corregirOrientacion(\GdImage $imagen, string $ruta): \GdImage
+    {
+        if (! function_exists('exif_read_data')) {
+            return $imagen;
+        }
+
+        $exif = @exif_read_data($ruta);
+        $orientacion = $exif['Orientation'] ?? null;
+
+        return match ($orientacion) {
+            3 => imagerotate($imagen, 180, 0),
+            6 => imagerotate($imagen, -90, 0),
+            8 => imagerotate($imagen, 90, 0),
+            default => $imagen,
+        };
     }
 
     public function table(Table $table): Table
